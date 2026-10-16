@@ -46,7 +46,7 @@ MaLoW gives vision-language models a memory of earlier observations through evol
 - [Checkpoints](#checkpoints)
 - [Evaluation](#evaluation)
 - [Dataset](#dataset)
-- [Train](#train)
+- [Training](#training)
 - [Contact](#contact)
 - [Citation](#citation)
 - [Acknowledgments and license](#acknowledgments-and-license)
@@ -88,7 +88,7 @@ Video evaluation also supports question-driven memory updates (`--eval-mode inte
 ## Dataset
 > **Coming soon:** Training data will be released. Stay tuned!
 
-## Train
+## Training
 
 > **Coming soon:** Training code will be released. Stay tuned!
 
