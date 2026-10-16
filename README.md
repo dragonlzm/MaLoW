@@ -60,6 +60,9 @@ Please follow the instruction [here](docs/env_prep.md) to finish the environment
 
 Browse all six checkpoints in the **[MaLoW collection](https://huggingface.co/collections/zhuomingliu/malow-6abf1cddce6196fc0bf08a8c)**.
 
+[Daily download statistics](https://github.com/dragonlzm/MaLoW/tree/download-stats)
+and [counting methodology](docs/download_statistics.md) are available for each checkpoint.
+
 Download only the model you need. These packages contain MaLoW memory weights and the corresponding **Qwen3.5 or Qwen3-VL base model is also required**.
 | Model | Checkpoint |
 | --- | --- |

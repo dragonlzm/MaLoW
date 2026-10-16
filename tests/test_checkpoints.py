@@ -21,6 +21,19 @@ class AGGREGATOR_TYPE(str, Enum):
 
 
 class CheckpointMetadataTests(unittest.TestCase):
+    def test_descriptive_hub_config_does_not_change_runtime_metadata(self):
+        with tempfile.TemporaryDirectory() as folder:
+            save_checkpoint_metadata({'enabled': True, 'scale': torch.tensor([1.0, 2.0])}, folder)
+            before = load_checkpoint_metadata(folder)
+            (Path(folder) / 'config.json').write_text(json.dumps({
+                'format': 'malow-memory-module', 'version': 1,
+                'base_model': 'Qwen/Qwen3.5-4B',
+                'metadata_file': 'c2l_metadata.json', 'weights_file': 'model.safetensors',
+            }))
+            after = load_checkpoint_metadata(folder)
+            self.assertEqual(before['enabled'], after['enabled'])
+            self.assertTrue(torch.equal(before['scale'], after['scale']))
+
     def test_nested_types_and_tensors_round_trip_both_runtimes(self):
         source = {"hypernet_config": HypernetConfig(layer_indices=torch.tensor([0, 3]), feature_sizes=({("layer", 0): 4}, {}), targets={"q", "v"}, aggregator_type=AGGREGATOR_TYPE.ENCODER_AGGREGATOR), "enabled": True}
         modules = {}

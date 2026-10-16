@@ -3,22 +3,22 @@ from pathlib import Path
 
 import pytest
 
-from malow.download import download_plan, verify_checksums
+from malow.download import download_plan, main, verify_checksums
 
 
-def test_vla_includes_stage1_and_one_base():
-    plan = download_plan('vla', 'checkpoints', with_base=True)
+def test_video_includes_checkpoint_and_matching_base():
+    plan = download_plan('video-2b', 'checkpoints', with_base=True)
     assert [item['repo_id'] for item in plan] == [
-        'zhuomingliu/Qwen3.5-2B-MLP',
-        'zhuomingliu/MaLoW-Qwen3.5-2B-MLP',
+        'zhuomingliu/MaLoW-Qwen3.5-2B',
         'Qwen/Qwen3.5-2B',
     ]
 
 
-def test_all_downloads_deduplicate_shared_base_and_dependency():
+def test_all_downloads_deduplicate_shared_base():
     plan = download_plan('all', 'checkpoints', with_base=True)
-    assert len(plan) == 13
-    assert len({item['repo_id'] for item in plan}) == 13
+    assert len(plan) == 11
+    assert len({item['repo_id'] for item in plan}) == 11
+    assert sum(item['kind'] == 'model' for item in plan) == 6
 
 
 def test_inventory_detects_corruption(tmp_path):
@@ -50,3 +50,22 @@ def test_last8s_uses_qwen3vl_instruct_base():
         'zhuomingliu/MaLoW-Qwen3-VL-4B-Last8s', 'Qwen/Qwen3-VL-4B-Instruct',
     ]
     assert plan[1]['revision'] == 'ebb281ec70b05090aa6165b016eac8ec08e71b17'
+
+
+def test_all_snapshot_downloads_preserve_revisions_and_validate_added_config(tmp_path, monkeypatch):
+    import huggingface_hub
+    plan = download_plan('all', tmp_path, with_base=True)
+    calls = []
+    def snapshot_download(*, repo_id, revision, local_dir):
+        calls.append({'repo_id': repo_id, 'revision': revision, 'local_dir': local_dir})
+        folder = Path(local_dir)
+        folder.mkdir()
+        if repo_id.startswith('zhuomingliu/'):
+            payloads = {'model.safetensors': b'unchanged-weights', 'config.json': b'{"format":"malow-memory-module"}'}
+            for name, data in payloads.items():
+                (folder / name).write_bytes(data)
+            (folder / 'SHA256SUMS').write_text(''.join(
+                hashlib.sha256(data).hexdigest() + '  ' + name + '\n' for name, data in payloads.items()))
+    monkeypatch.setattr(huggingface_hub, 'snapshot_download', snapshot_download)
+    main(['--model', 'all', '--with-base', '--output', str(tmp_path)])
+    assert calls == [{key: item[key] for key in ('repo_id', 'revision', 'local_dir')} for item in plan]

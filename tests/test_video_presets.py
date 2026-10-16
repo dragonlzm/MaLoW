@@ -24,6 +24,20 @@ def launcher_args(checkpoint, benchmark="ovo", extra=()):
             "--video-root", "videos", "--output-dir", "outputs", *extra]
 
 
+@pytest.mark.parametrize('benchmark', ['ovo', 'streaming'])
+@pytest.mark.parametrize('tail', [2, 4, 8])
+@pytest.mark.parametrize('mode', ['offline', 'interactive', 'fixed-gap'])
+def test_hub_config_does_not_change_evaluation_command(tmp_path, benchmark, tail, mode):
+    checkpoint = metadata_dir(tmp_path, {'base_tail_seconds': tail, 'base_input_frame_number': tail})
+    argv = launcher_args(checkpoint, benchmark, extra=('--offline', '--eval-mode', mode))
+    before = build_command(parse_args(argv))
+    (checkpoint / 'config.json').write_text(json.dumps({
+        'format': 'malow-memory-module', 'version': 1, 'base_model': 'Qwen/Qwen3.5-4B',
+        'metadata_file': 'c2l_metadata.json', 'weights_file': 'model.safetensors',
+    }))
+    assert build_command(parse_args(argv)) == before
+
+
 @pytest.mark.parametrize("benchmark", ["ovo", "streaming"])
 @pytest.mark.parametrize("tail,frames", [(None, 2), (4.0, 4), (8.0, 8)])
 def test_auto_metadata_reaches_worker_and_preserves_evaluation_cap(tmp_path, monkeypatch, benchmark, tail, frames):

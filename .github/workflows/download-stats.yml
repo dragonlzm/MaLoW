@@ -1,0 +1,53 @@
+name: Daily checkpoint download statistics
+
+on:
+  schedule:
+    - cron: '17 9 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: malow-download-stats
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    if: github.repository == 'dragonlzm/MaLoW'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Collect counters and preserve daily history
+        shell: bash
+        env:
+          PYTHONPATH: src
+        run: |
+          set -euo pipefail
+          stats_dir="$RUNNER_TEMP/malow-download-stats"
+          if git ls-remote --exit-code --heads origin download-stats > /dev/null; then
+            git fetch --no-tags origin refs/heads/download-stats
+            git worktree add --detach "$stats_dir" FETCH_HEAD
+          else
+            status=$?
+            if [ "$status" -ne 2 ]; then
+              exit "$status"
+            fi
+            git worktree add --detach "$stats_dir" HEAD
+            git -C "$stats_dir" switch --orphan download-stats
+          fi
+          python -m malow.download_stats --output-dir "$stats_dir/daily"
+          cp docs/download_statistics.md "$stats_dir/README.md"
+          git -C "$stats_dir" add daily README.md
+          if git -C "$stats_dir" diff --cached --quiet; then
+            echo 'Today already has a complete snapshot.'
+            exit 0
+          fi
+          git -C "$stats_dir" -c user.name='github-actions[bot]' \
+            -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -m "Record checkpoint download counters $(date -u +%F)"
+          git -C "$stats_dir" push origin HEAD:refs/heads/download-stats
