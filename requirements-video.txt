@@ -1,0 +1,23 @@
+# Linux GPU reference versions recorded with the released checkpoints.
+# Install torch/torchvision first using the CUDA wheel command in docs/video_evaluation.md.
+torch==2.6.0
+torchvision==0.21.0
+transformers==5.6.0
+accelerate==1.11.0
+datasets==4.0.0
+peft==0.18.1
+# Supporting packages: bounded API-compatible releases; see validation notes.
+qwen-vl-utils==0.0.14
+decord==0.6.0
+ffmpeg-python==0.2.0
+av>=14,<17
+einops>=0.8,<0.9
+safetensors>=0.5,<1
+huggingface-hub>=1.0,<2
+numpy>=1.26,<3
+Pillow>=10,<13
+PyYAML>=6,<7
+pyarrow>=19,<23
+filelock>=3.16,<4
+tqdm>=4.67,<5
+pytest>=8,<10

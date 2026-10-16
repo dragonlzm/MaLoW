@@ -1,0 +1,30 @@
+# Local paper drafts and release staging
+paper/
+.release/
+.DS_Store
+# Downloaded assets and evaluation outputs
+checkpoints/
+data/
+!src/malow/video/data/
+!src/malow/video/data/*.py
+outputs/
+third_party/
+external/
+results/
+*.pt
+*.pth
+*.safetensors
+*.bin
+# Python build and test artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.venv*/
+.envs/
+.cache/
+build/
+dist/
+.env
+.env.*

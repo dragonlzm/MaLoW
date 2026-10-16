@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MaLoW: Memory as Weights</title>
+  <meta name="description" content="MaLoW internalizes long-term history into evolving LoRA weights for streaming video understanding and vision-language-action policies.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="MaLoW: Memory as Weights">
+  <meta property="og:description" content="Internalizing Long-Term History for Streaming Videos. History as weights, current observation as input.">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="MaLoW: Memory as Weights">
+  <meta name="twitter:description" content="Internalizing Long-Term History for Streaming Videos.">
+  <link rel="stylesheet" href="assets/stylesheets/main_free.css">
+  <link rel="stylesheet" href="assets/fontawesome-free-6.6.0-web/css/all.min.css">
+  <link rel="stylesheet" href="assets/stylesheets/malow.css">
+  <script src="assets/javascripts/qualitative-videos.js" defer></script>
+  <script src="assets/javascripts/section-navigation.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#introduction">Skip to content</a>
+<details class="section-navigation" open>
+  <summary>Sections</summary>
+  <nav aria-labelledby="section-navigation-title">
+    <p id="section-navigation-title">On this page</p>
+    <ol>
+      <li><a href="#introduction">Introduction</a></li>
+      <li><a href="#method">Method Overview</a></li>
+      <li><a href="#malow-instruct">MaLoW-Instruct</a></li>
+      <li><a href="#performance">Performance</a></li>
+      <li><a href="#inference-overhead">Inference Overhead</a></li>
+      <li><a href="#qualitative">Qualitative Results</a></li>
+      <li><a href="#resources">Resources</a></li>
+      <li><a href="#next">What To Add Next</a></li>
+      <li><a href="#citation">Citation</a></li>
+    </ol>
+  </nav>
+</details>
+<main>
+<div class="container blog" id="first-content">
+  <div class="blog-title">
+    <div class="blog-intro">
+      <p class="eyebrow">MaLoW · Memory as LoRA Weights</p>
+      <h1 class="title">Memory as Weights: Internalizing Long-Term History for Streaming Videos</h1>
+      <p class="author"><a href="https://scholar.google.com/citations?user=HXOVwRAAAAAJ&hl=en">Zhuoming Liu</a><sup>1</sup>, <a href="https://scholar.google.com/citations?user=v4UwIYMAAAAJ&hl=en">Jinhong Lin</a><sup>1</sup>, <a href="https://scholar.google.com/citations?user=5-PDQ94AAAAJ&hl=en">Lin Zhang</a><sup>1</sup>, <a href="https://scholar.google.com/citations?user=irrbH_IAAAAJ&hl=en">Yiwu Zhong</a><sup>2</sup>, <a href="https://scholar.google.com/citations?user=_y-8nrcAAAAJ">Yin Li</a><sup>1</sup></p>
+      <p class="author-note"><sup>1</sup> University of Wisconsin–Madison &nbsp; <sup>2</sup> Peking University</p>
+      <div class="abstract-block">
+        <!-- <p class="abstract">A streaming memory framework that carries the past in evolving LoRA weights, so vision-language models can focus on the current observation while remembering earlier experiences.</p> -->
+        <div class="resource-row" role="group" aria-label="Abstract links">
+          <a href="https://github.com/dragonlzm/MaLoW" class="button icon">Code <i class="fa-solid fa-code" aria-hidden="true"></i></a>
+          <a href="https://huggingface.co/collections/zhuomingliu/malow-6abf1cddce6196fc0bf08a8c" class="button icon">Hugging Face <i class="fa-regular fa-face-smile" aria-hidden="true"></i></a>
+          <a href="https://arxiv.org/abs/2610.22070" class="button icon">arXiv <i class="fa-solid fa-scroll"></i></a>
+          <!-- <span class="button pending" aria-disabled="true">Paper · Coming soon</span> -->
+          <!-- Additional abstract link: replace this span with an <a href="URL" class="button">Label</a> when ready. -->
+          <!-- <span class="button pending" aria-disabled="true">Additional link · Coming soon</span> -->
+        </div>
+      </div>
+    </div>
+    <div class="blog-cover">
+      <figure class="media-figure teaser-figure">
+        <img src="assets/teaser_structure.png" width="2277" height="1072" alt="MaLoW converts historical video observations into LoRA weights for a frozen vision-language model, which takes the current observation and question as input." fetchpriority="high">
+        <figcaption><strong>History as weights, current observation as input.</strong> A streaming memory framework that carries the past in evolving LoRA weights, so vision-language models can focus on the current observation while remembering earlier experiences.</figcaption>
+      </figure>
+    </div>
+  </div>
+</div>
+<div class="container blog main first" id="introduction">
+  <h2>Introduction</h2>
+  <p class="text">Streaming vision-language models must remember what happened earlier, understand what is happening now, and respond as new observations arrive. Storing historical observations in the input context makes the past and the present compete for a limited context window.</p>
+  <p class="text">MaLoW takes a different approach: <strong>history as weights, current observation as input.</strong> A recurrent hypernetwork incrementally consolidates earlier observations into lightweight LoRA updates. The adapted model receives the current observation and user query, while its evolving weights carry information from the past.</p>
+  <p class="text">On the backward split of OVO-Bench, MaLoW outperforms prior memory approaches by 3.9%-11.8% across different video backbones while incurring only modest latency overhead.
+    Across base VLMs ranging from 0.8B to 11B parameters, MaLoW yields consistent performance gains. 
+    Beyond streaming video understanding, MaLoW also generalizes to vision-language-action models, improving the action success rate on Simpler WidowX by 9.4 percentage points.</p>
+</div>
+<div class="container blog large gray">
+  <div class="stat-grid">
+    <div class="stat-card"><h3>Problem</h3><p>An expanding history competes with current observations for limited model input context.</p></div>
+    <div class="stat-card"><h3>Core Idea</h3><p>Internalize history into evolving, fixed-size LoRA weights through a recurrent hypernetwork.</p></div>
+    <div class="stat-card"><h3>Scope</h3><p>Streaming video setting includes streaming video understanding, interactive AI assistants and robotic planning.</p></div>
+  </div>
+</div>
+<div class="container blog main" id="method">
+  <h2>Method Overview</h2>
+  <p class="lead">MaLoW converts incoming experience into a compact memory state and then into parameter updates for the next interaction.</p>
+  <figure class="media-figure method-figure">
+    <a href="assets/method.png" target="_blank" rel="noopener" aria-label="View the full-size MaLoW method overview">
+      <img src="assets/method.png" width="3000" height="873" alt="MaLoW architecture: recurrent history-to-LoRA updates, context compression with learned queries, parallel state-space and gated semantic memory branches, and LoRA weight decoding." loading="lazy" decoding="async">
+    </a>
+    <figcaption><strong>MaLoW method overview.</strong> (1) Recurrent updates encode history into LoRA weights for the current prediction. (2) Learned queries compress visual and timestamp tokens. (3) A state-space model (SSM) captures local temporal dynamics while a parallel branch preserves global semantics. (4) The resulting memory is decoded into LoRA weights. (5) Cosine-similarity gating filters redundant observations during global semantic accumulation.</figcaption>
+  </figure>
+</div>
+<div class="container blog large">
+  <div class="method-flow">
+    <div class="method-step"><h3>1. Context Encoding</h3><p>Encode visual observations and textual context, then compress them using learned queries.</p></div>
+    <div class="flow-arrow" aria-hidden="true"><i class="fa-solid fa-arrow-right"></i></div>
+    <div class="method-step"><h3>2. Recurrent Memory</h3><p>Combine a state-space model for temporal dynamics with gated accumulation of global semantic information.</p></div>
+    <div class="flow-arrow" aria-hidden="true"><i class="fa-solid fa-arrow-right"></i></div>
+    <div class="method-step"><h3>3. LoRA Generation</h3><p>Decode memory into lightweight LoRA weights. Use the adapted model to answer the current query or predict an action.</p></div>
+  </div>
+</div>
+<div class="container blog large" id="malow-instruct">
+  <h2>MaLoW-Instruct</h2>
+  <p class="text">MaLoW-Instruct adapts public offline video datasets to streaming video understanding, with <strong>381K question-answer pairs over 56K videos from 14 datasets</strong>. Its timestamped questions teach models to recall past events, understand ongoing activity, and anticipate future events from the evidence already observed.</p>
+  <figure class="media-figure dataset-figure">
+    <a href="assets/dataset.png" target="_blank" rel="noopener" aria-label="View the full-size MaLoW-Instruct pipeline and dataset statistics">
+      <img src="assets/dataset.png" width="7278" height="1338" alt="MaLoW-Instruct question generation, answer generation, and verification pipeline, with charts showing query timing, question types, and video sources." loading="lazy" decoding="async">
+    </a>
+    <figcaption><strong>MaLoW-Instruct construction and statistics.</strong> (1) A Question Generator creates timestamped questions and expected answers; an Answer Generator answers using only video available up to each query; a Verifier checks question validity and answer consistency. (2) Dataset distributions cover question timing relative to the target event, question formats, and source videos. Select the figure to view it at full size.</figcaption>
+  </figure>
+  <p class="text">The pipeline retains only QA pairs that pass verification and filters videos overlapping with OVO-Bench. Questions include open-ended, multiple-choice, and yes/no formats. <strong>Approximately 36% of queries occur after the target event has ended</strong>, directly supervising historical recall, while many real-time questions also require evidence outside the current observation window further encouraging the
+model to leverage historical context through MaLoW.</p>
+</div>
+<div class="container blog main" id="performance">
+  <h2>Performance</h2>
+  <!-- <p class="text">Section 1 compares MaLoW with prior streaming video models. Section 2 shows its performance across base-model scales and families. Section 3 summarizes robot-control results on Simpler WidowX.</p> -->
+</div>
+<div id="performance-results">
+<div class="container blog main">
+  <h3 id="full-results-heading">MaLoW achieves state-of-the-art results.</h3>
+  <p class="text">MaLoW improves both StreamingBench real-time accuracy and overall OVO-Bench accuracy over each corresponding base model. Among the compared methods, MaLoW (Qwen3-VL-4B) achieves the highest StreamingBench real-time accuracy at 84.8%, while MaLoW (MOSS-VL-Real-11B) achieves the highest overall OVO-Bench accuracy at 74.5%. 
+    MaLoW (Qwen3.5-9B) also achieves the highest episodic memory accuracy at 63.6%, highlighting its ability to retain evidence from earlier observations. <br><br>
+    MaLoW is particularly effective on memory-critical tasks while retaining competitive performance on real-time perception. Importantly, the gains are consistent across model scales from 4B to 11B and across base VLMs pre-trained for both offline video understanding (Qwen series) and streaming video understanding (VideoChat3 and MOSS-VL-Realtime).<br><br>
+  </p>
+  <h3 id="full-results-heading">MaLoW offers a lightweight memory patch.</h3>
+  <p class="text">Across different base VLMs, MaLoW introduces only 1.4%-4.0% additional parameters. The pretrained backbone architecture and parameters remain unchanged, while historical information is encoded entirely through the evolving LoRA weights. Preserving the backbone helps retain its pretrained capabilities and minimizes interference with real-time perception. Moreover, widespread LoRA support in modern inference frameworks facilitates efficient deployment.
+  </p>
+</div>
+<div class="container blog extra-large gray">
+<section class="result-table-block" aria-labelledby="full-results-heading">
+    <div class="table-scroll" role="region" aria-label="Paper Table 1: full streaming video results; scroll horizontally to view all columns" tabindex="0">
+      <table class="result-table paper-table full-results-table">
+        <caption class="sr-only">Table 1. Full results in streaming video understanding</caption>
+        <colgroup><col class="col-model"><col class="col-frames"><col class="col-sb"><col span="11"><col class="col-avg"></colgroup>
+        <thead>
+          <tr><th rowspan="3" scope="col" class="model-cell">Model</th><th rowspan="3" scope="col">Frames / sampling</th><th rowspan="3" scope="col">StreamingBench (R)</th><th colspan="12" scope="colgroup">OVO-Bench</th></tr>
+          <tr><th colspan="7" scope="colgroup" class="perception-header">Real-Time Visual Perception</th><th colspan="4" scope="colgroup">Backward Tracing</th><th rowspan="2" scope="col">Avg.</th></tr>
+          <tr><th scope="col">OCR</th><th scope="col">ACR</th><th scope="col">ATR</th><th scope="col">STU</th><th scope="col">FPD</th><th scope="col">OJR</th><th scope="col">Avg.</th><th scope="col" class="epm-header">EPM</th><th scope="col">ASI</th><th scope="col">HLD</th><th scope="col">Avg.</th></tr>
+        </thead>
+        <tbody>
+      <tr class="table-group"><th colspan="15" scope="rowgroup">Offline Video LLMs</th></tr>
+      <!-- <tr><th scope="row" class="model-cell">LLaVA-Video-7B</th><td>64</td><td>—</td><td>69.1</td><td>58.7</td><td>68.8</td><td>49.4</td><td>74.3</td><td>59.8</td><td>63.5</td><td>56.2</td><td>57.4</td><td>7.5</td><td>40.4</td><td>52.0</td></tr>
+      <tr><th scope="row" class="model-cell">LongVU-7B</th><td>1 fps</td><td>—</td><td>55.7</td><td>49.5</td><td>59.5</td><td>48.3</td><td>68.3</td><td>63.0</td><td>57.4</td><td>43.1</td><td>66.2</td><td>9.1</td><td>39.5</td><td>48.5</td></tr> -->
+      <tr class="model-qwen"><th scope="row" class="model-cell">Qwen3-VL-4B</th><td>1 fps</td><td>78.4</td><td>85.2</td><td>60.6</td><td>74.1</td><td>51.1</td><td>76.2</td><td>67.9</td><td>69.2</td><td>57.9</td><td>61.5</td><td>16.7</td><td>45.4</td><td>57.3</td></tr>
+      <!-- <tr class="model-qwen"><th scope="row" class="model-cell">Qwen3.5-4B</th><td>1 fps</td><td>80.4</td><td>79.2</td><td>62.4</td><td>74.1</td><td>51.7</td><td>73.3</td><td>60.9</td><td>66.9</td><td>61.6</td><td>68.2</td><td>50.5</td><td>60.1</td><td>63.5</td></tr> -->
+      <tr class="model-qwen"><th scope="row" class="model-cell">Qwen3.5-9B</th><td>1 fps</td><td>81.9</td><td>83.9</td><td>62.4</td><td>70.7</td><td>46.1</td><td>76.2</td><td>70.6</td><td>68.3</td><td>61.6</td><td>62.8</td><td>59.1</td><td>61.2</td><td>64.8</td></tr>
+      <tr class="table-group"><th colspan="15" scope="rowgroup">Streaming Video LLMs with full context</th></tr>
+      <!-- <tr><th scope="row" class="model-cell">VideoLLM-online-8B</th><td>2 fps</td><td>36.0</td><td>8.1</td><td>23.9</td><td>12.1</td><td>14.0</td><td>45.5</td><td>21.2</td><td>20.8</td><td>22.2</td><td>18.8</td><td>12.2</td><td>17.7</td><td>19.3</td></tr>
+      <tr><th scope="row" class="model-cell">Streamo-7B</th><td>1 fps</td><td>—</td><td>79.2</td><td>57.8</td><td>75.0</td><td>49.4</td><td>64.4</td><td>70.1</td><td>66.0</td><td>54.6</td><td>52.0</td><td>31.7</td><td>46.1</td><td>56.1</td></tr> -->
+      <tr class="model-videochat"><th scope="row" class="model-cell">VideoChat3-4B</th><td>2-4 fps*</td><td>79.0 <span class="reported-score">(83.0)</span></td><td>92.6</td><td>78.0</td><td>77.6</td><td>59.0</td><td>74.3</td><td>71.7</td><td>75.5</td><td>58.8</td><td>58.6</td><td>46.8</td><td>54.7</td><td>65.1</td></tr>
+      <tr class="model-moss"><th scope="row" class="model-cell">MOSS-VL-Real-11B</th><td>1 fps</td><td>80.6 <span class="reported-score">(82.9)</span></td><td>86.6</td><td>70.6</td><td>84.8</td><td>64.6</td><td>71.2</td><td>73.9</td><td>75.2</td><td>60.6</td><td>64.5</td><td>92.4</td><td><strong>72.5</strong></td><td>73.8</td></tr>
+      <tr class="table-group"><th colspan="15" scope="rowgroup">Streaming Video LLMs with Local Context Window</th></tr>
+      <!-- <tr><th scope="row" class="model-cell">Mage-VL-4B</th><td>4 (1 fps)</td><td>—</td><td>94.6</td><td>83.5</td><td>79.3</td><td>74.2</td><td>70.3</td><td>77.2</td><td>79.8</td><td>50.2</td><td>61.5</td><td>32.8</td><td>48.2</td><td>64.0</td></tr> -->
+      <tr><th scope="row" class="model-cell">Simplestream-8B</th><td>4 (1 fps)</td><td>78.3</td><td>89.3</td><td>77.1</td><td>83.6</td><td>68.5</td><td>76.2</td><td>81.0</td><td><strong>79.3</strong></td><td>49.5</td><td>56.1</td><td>54.8</td><td>53.5</td><td>66.4</td></tr>
+      <tr><th scope="row" class="model-cell">AURA-8B</th><td>30 (1 fps)</td><td>83.2</td><td>89.9</td><td>79.8</td><td>80.2</td><td>70.2</td><td>77.2</td><td>81.5</td><td>79.8</td><td>54.9</td><td>67.6</td><td>58.6</td><td>60.4</td><td>70.1</td></tr>
+      <tr class="table-group"><th colspan="15" scope="rowgroup">Streaming Video LLMs with Local Context Window and Memory Mechanism</th></tr>
+      <!-- <tr><th scope="row" class="model-cell">Flash-VStream-7B</th><td>1 fps</td><td>23.2</td><td>24.2</td><td>29.4</td><td>28.5</td><td>33.7</td><td>25.7</td><td>28.8</td><td>28.4</td><td>39.1</td><td>37.2</td><td>5.9</td><td>27.4</td><td>27.9</td></tr>
+      <tr><th scope="row" class="model-cell">Dispider-7B</th><td>1 fps</td><td>67.6</td><td>57.7</td><td>49.5</td><td>62.1</td><td>44.9</td><td>61.4</td><td>51.6</td><td>54.6</td><td>48.5</td><td>55.4</td><td>4.3</td><td>36.1</td><td>45.4</td></tr>
+      <tr><th scope="row" class="model-cell">TimeChat-Online-7B</th><td>1 fps</td><td>75.3</td><td>75.2</td><td>46.8</td><td>70.7</td><td>47.8</td><td>69.3</td><td>61.4</td><td>61.9</td><td>55.9</td><td>59.5</td><td>9.7</td><td>41.7</td><td>51.8</td></tr>
+      <tr><th scope="row" class="model-cell">StreamForest-7B</th><td>1 fps</td><td>77.3</td><td>68.5</td><td>53.2</td><td>71.6</td><td>47.8</td><td>65.4</td><td>60.9</td><td>61.2</td><td>58.9</td><td>64.9</td><td>32.3</td><td>52.0</td><td>56.6</td></tr>
+      <tr><th scope="row" class="model-cell">JoyAI-VL-Interaction-9B</th><td>1 fps</td><td>—</td><td>72.5</td><td>61.5</td><td>75.0</td><td>59.0</td><td>78.2</td><td>64.1</td><td>68.4</td><td>62.0</td><td>70.9</td><td>12.9</td><td>48.6</td><td>58.5</td></tr>
+      <tr><th scope="row" class="model-cell">HERMES-7B</th><td>1 fps</td><td>79.4</td><td>85.2</td><td>64.2</td><td>71.6</td><td>53.4</td><td>74.3</td><td>65.2</td><td>69.0</td><td>48.5</td><td>62.2</td><td>37.6</td><td>49.4</td><td>59.2</td></tr> -->
+      <!-- <tr><th scope="row" class="model-cell">ThinkStream-3B</th><td>2 fps</td><td>75.0</td><td>85.2</td><td>64.2</td><td>69.8</td><td>49.4</td><td>69.3</td><td>64.1</td><td>67.0</td><td>53.9</td><td>59.5</td><td>43.6</td><td>52.3</td><td>59.7</td></tr> -->
+      <!-- <tr><th scope="row" class="model-cell">VST-7B</th><td>2 fps</td><td>79.5</td><td>80.5</td><td>55.1</td><td>72.4</td><td>55.1</td><td>76.2</td><td>64.1</td><td>67.2</td><td>56.9</td><td>64.9</td><td>48.4</td><td>56.7</td><td>62.0</td></tr> -->
+      <tr><th scope="row" class="model-cell">OASIS-8B</th><td>2 fps</td><td>78.2</td><td>92.0</td><td>80.7</td><td>81.0</td><td>67.4</td><td>67.3</td><td>79.9</td><td>78.1</td><td>62.0</td><td>60.1</td><td>47.3</td><td>57.2</td><td>67.7</td></tr>
+      <tr><th scope="row" class="model-cell">StreamTTT-4B</th><td>2 fps</td><td>81.3</td><td>91.3</td><td>80.7</td><td>80.2</td><td>56.2</td><td>82.2</td><td>77.7</td><td>78.1</td><td>60.9</td><td>58.1</td><td>60.8</td><td>59.9</td><td>69.0</td></tr>
+      <tr class="table-group"><th colspan="15" scope="rowgroup">Ours</th></tr>
+      <tr class="ours model-videochat"><th scope="row" class="model-cell">MaLoW (VideoChat3-4B)<span class="model-detail">197.6M trainable (4.0%)</span></th><td>1 fps</td><td>81.2</td><td>89.9</td><td>70.6</td><td>80.2</td><td>60.7</td><td>76.2</td><td>75.3</td><td>75.5</td><td>60.2</td><td>58.1</td><td>54.8</td><td>57.7</td><td>66.6</td></tr>
+      <tr class="ours model-qwen"><th scope="row" class="model-cell">MaLoW (Qwen3-VL-4B)<span class="model-detail">197.6M trainable (3.9%)</span></th><td>1 fps</td><td><strong>84.8</strong></td><td>90.6</td><td>69.7</td><td>75.0</td><td>64.0</td><td>74.3</td><td>74.5</td><td>74.7</td><td>62.0</td><td>67.6</td><td>61.8</td><td>63.8</td><td>69.3</td></tr>
+      <!-- <tr class="ours model-qwen"><th scope="row" class="model-cell">MaLoW (Qwen3.5-4B)<span class="model-detail">235.0M trainable (4.6%)</span></th><td>1 fps</td><td>82.3</td><td>91.2</td><td>71.6</td><td>79.3</td><td>59.0</td><td>76.2</td><td>70.5</td><td>74.7</td><td>58.9</td><td>64.2</td><td>64.5</td><td>62.5</td><td>68.6</td></tr> -->
+      <tr class="ours model-qwen"><th scope="row" class="model-cell">MaLoW (Qwen3.5-9B)<span class="model-detail">308.9M trainable (3.0%)</span></th><td>1 fps</td><td>82.3</td><td>87.9</td><td>66.1</td><td>81.0</td><td>60.1</td><td>84.2</td><td>77.7</td><td>76.2</td><td><strong>63.6</strong></td><td>66.2</td><td>69.4</td><td>66.4</td><td>71.3</td></tr>
+      <tr class="ours model-moss"><th scope="row" class="model-cell">MaLoW (MOSS-VL-Real-11B)<span class="model-detail">321.1M trainable (1.4%)</span></th><td>1 fps</td><td>81.0</td><td>91.9</td><td>74.3</td><td>85.3</td><td>62.9</td><td>73.3</td><td>76.6</td><td>77.4</td><td>62.0</td><td>62.8</td><td>90.3</td><td>71.7</td><td><strong>74.5</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="table-note">The results shown in Accuracy (%). StreamingBench (R) measures real-time understanding. The OVO-Bench columns cover real-time perception and backward tracing. Scroll horizontally to view all tasks. *VideoChat3 uses 2 fps on OVO-Bench and 4 fps on StreamingBench.<br>
+      1. Gray numbers denote results reported in the original paper that differ from our re-evaluation using the official implementation and reported evaluation hyperparameters. Please refer to `Baselines Re-evaluation` in sec C.1 of the paper for more information. <br>
+      2. Matching row colors pair base models with their MaLoW instantiations: green for Qwen, blue for VideoChat3, and yellow for MOSS.<br>
+      3. MaLoW (Qwen3-VL-4B) use the most recent 8-second clips as the current observations, while the other MaLoW instantiations use the most recent 2 seconds.<br>
+      For more information please refer to the Table 1 in the paper.</p>
+  </section>
+</div>
+  <!-- Paper Table 4: tab:different_scale_diffent_source -->
+<div class="container blog main">
+  <h3 id="model-scales-heading">MaLoW generalizes across model scales and families.</h3>
+  <p class="text">Across all four Gemma4 and Qwen3.5 backbones, MaLoW improves average accuracy on both benchmarks over the corresponding full-context and local-window baselines. On OVO-Bench backward tracing, it improves over local-window baselines by 7.7–23.9 percentage points, while also improving real-time accuracy over full-context baselines on both benchmarks. These results show that MaLoW preserves historical information while maintaining strong understanding of current observations.</p>
+</div>
+<div class="container blog extra-large gray">
+<section class="result-table-block" aria-labelledby="model-scales-heading">
+    <div class="table-scroll" role="region" aria-label="Paper Table 4: performance across base-model scales and families; scroll horizontally to view all columns" tabindex="0">
+      <table class="result-table paper-table scale-results-table">
+        <caption class="sr-only">Table 4. Performance across base-model scales and families</caption>
+        <colgroup><col class="col-model"><col span="3"><col class="col-avg"><col span="4"><col class="col-avg"></colgroup>
+        <thead>
+          <tr><th rowspan="2" scope="col" class="model-cell">Method</th><th colspan="4" scope="colgroup">OVO-Bench</th><th colspan="5" scope="colgroup">StreamingBench</th></tr>
+          <tr><th scope="col">Backward</th><th scope="col">Real-time</th><th scope="col">Forward</th><th scope="col">Avg.</th><th scope="col">Real-time</th><th scope="col">Omni</th><th scope="col">Proactive</th><th scope="col">SQA</th><th scope="col">Avg.</th></tr>
+        </thead>
+        <tbody>
+      <tr class="table-group"><th colspan="10" scope="rowgroup">Base model with 1 fps, full-context baseline</th></tr>
+      <tr><th scope="row" class="model-cell">Gemma4-E4B</th><td>56.8</td><td class="perception-score">63.1</td><td>37.9</td><td>52.6</td><td class="perception-score">68.6</td><td>37.0</td><td>24.4</td><td>50.0</td><td>54.6</td></tr>
+      <tr><th scope="row" class="model-cell">Qwen3.5-0.8B</th><td>34.2</td><td class="perception-score">60.8</td><td>48.0</td><td>47.7</td><td class="perception-score">69.1</td><td>32.1</td><td>22.4</td><td>39.6</td><td>52.5</td></tr>
+      <tr><th scope="row" class="model-cell">Qwen3.5-2B</th><td>44.6</td><td class="perception-score">62.5</td><td>46.3</td><td>51.2</td><td class="perception-score">75.1</td><td>38.1</td><td>6.4</td><td>42.8</td><td>57.2</td></tr>
+      <tr><th scope="row" class="model-cell">Qwen3.5-4B</th><td>60.1</td><td class="perception-score">66.9</td><td>51.2</td><td>59.4</td><td class="perception-score">80.4</td><td>40.7</td><td>54.8</td><td>46.0</td><td>63.8</td></tr>
+      <tr class="table-group"><th colspan="10" scope="rowgroup">Base model with the last 2 frames from the last 2 seconds, local-window baseline</th></tr>
+      <tr><th scope="row" class="model-cell">Gemma4-E4B</th><td class="memory-score">54.9</td><td>65.7</td><td>39.6</td><td>53.4</td><td>67.1</td><td>51.1</td><td>20.4</td><td>46.8</td><td>58.1</td></tr>
+      <tr><th scope="row" class="model-cell">Qwen3.5-0.8B</th><td class="memory-score">32.3</td><td>69.9</td><td>45.1</td><td>49.1</td><td>70.1</td><td>53.5</td><td>18.8</td><td>48.0</td><td>60.5</td></tr>
+      <tr><th scope="row" class="model-cell">Qwen3.5-2B</th><td class="memory-score">39.2</td><td>72.8</td><td>45.1</td><td>52.4</td><td>76.7</td><td>54.2</td><td>5.2</td><td>56.8</td><td>64.1</td></tr>
+      <tr><th scope="row" class="model-cell">Qwen3.5-4B</th><td class="memory-score">50.6</td><td>75.1</td><td>39.3</td><td>55.1</td><td>79.4</td><td>60.9</td><td>45.6</td><td>52.8</td><td>69.8</td></tr>
+      <tr class="table-group"><th colspan="10" scope="rowgroup">MaLoW models with 1 fps, maximum 768 frames</th></tr>
+      <tr class="ours"><th scope="row" class="model-cell">MaLoW (Gemma4-E4B)<span class="model-detail">190.4M trainable (1.2%)</span></th><td class="memory-score">62.6</td><td class="perception-score">64.8</td><td>47.8</td><td><strong>58.4</strong></td><td class="perception-score">74.6</td><td>44.8</td><td>40.0</td><td>46.0</td><td><strong>61.1</strong></td></tr>
+      <tr class="ours"><th scope="row" class="model-cell">MaLoW (Qwen3.5-0.8B)<span class="model-detail">115.5M trainable (10.8%)</span></th><td class="memory-score">54.7</td><td class="perception-score">67.7</td><td>48.7</td><td><strong>57.0</strong></td><td class="perception-score">76.7</td><td>48.9</td><td>26.0</td><td>48.4</td><td><strong>63.0</strong></td></tr>
+      <tr class="ours"><th scope="row" class="model-cell">MaLoW (Qwen3.5-2B)<span class="model-detail">170.7M trainable (6.3%)</span></th><td class="memory-score">63.1</td><td class="perception-score">70.1</td><td>49.3</td><td><strong>60.9</strong></td><td class="perception-score">80.3</td><td>54.3</td><td>54.4</td><td>55.6</td><td><strong>68.8</strong></td></tr>
+      <tr class="ours"><th scope="row" class="model-cell">MaLoW (Qwen3.5-4B)<span class="model-detail">235.0M trainable (4.6%)</span></th><td class="memory-score">62.5</td><td class="perception-score">74.7</td><td>49.3</td><td><strong>62.2</strong></td><td class="perception-score">82.3</td><td>63.7</td><td>68.0</td><td>50.0</td><td><strong>73.5</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="table-note"> The results shown in Accuracy (%). We build MaLoW across Gemma4 and Qwen3.5 models, comparing full-context baselines, local-window baselines, and MaLoW. <br>
+      Scroll horizontally to compare both benchmarks. Green cells compare real-time perception with full-context baselines; blue cells compare memory performance with local-window baselines. <br>
+      Trainable parameter counts and percentages are shown beneath each MaLoW model.</p>
+  </section>
+</div>
+<div class="container blog main">
+  <h3 id="simpler-heading">Extension to Vision-Language-Action (VLA) Models. </h3>
+  <p class="text">MaLoW raises the average task success rate from 59.4% to 68.8%, a gain of 9.4 percentage points. Success rates improve on three of the four tasks, with the largest gain on putting the spoon on the towel (70.8% → 87.5%), while carrot placement remains at 75.0%. These results demonstrate the benefit of incorporating historical observations and action trajectories into action prediction.</p>
+</div>
+<div class="container blog extra-large gray">
+<section class="result-table-block" aria-labelledby="simpler-heading">
+  <div class="table-scroll" role="region" aria-label="Simpler WidowX results; scroll horizontally to view all columns" tabindex="0">
+    <table class="result-table simpler-results-table"><caption class="sr-only">Simpler WidowX: released checkpoint reference results</caption><colgroup><col class="col-model"><col span="4"><col class="col-avg"></colgroup><thead><tr><th scope="col">Policy</th><th scope="col">Stack green block on yellow block</th><th scope="col">Put carrot on plate</th><th scope="col">Put spoon on towel</th><th scope="col">Put eggplant in yellow basket</th><th scope="col">Overall</th></tr></thead><tbody>
+      <tr class="baseline"><th scope="row">Qwen3.5-2B-MLP baseline</th><td>20.8</td><td>75.0</td><td>70.8</td><td>70.8</td><td>59.4</td></tr>
+      <tr><th scope="row">MaLoW (Qwen3.5-2B-MLP)</th><td>29.2</td><td>75.0</td><td>87.5</td><td>83.3</td><td><strong>68.8</strong></td></tr>
+    </tbody></table>
+  </div>
+  <p class="table-note"> VLA results on SimplerEnv-Bridge with WidowX Robot. For each task we run 24 episodes.</p>
+  
+</section>
+</div>
+</div>
+<div class="container blog main" id="inference-overhead">
+  <h2>Inference Overhead</h2>
+  <p class="text">We profile the streaming inference latency of MaLoW and four baselines on subset of OVO-Bench. At each query timestamp, we measure the time required to process the current observation, prefill the KV-cache, and decoding. 
+    For MaLoW, this also includes the time to generate and apply the LoRA weights.</p>
+  <p class="text">MaLoW achieves a favorable trade-off between inference latency and performance on memory-critical tasks. The additional latency introduced by our memory mechanism is only around 23 ms, accounting for less than 15% of the total inference time. Moreover, LoRA generation can be parallelized with backbone inference, providing further opportunities to reduce the runtime overhead.</p>
+  <figure class="media-figure">
+    <a href="assets/speed.png" target="_blank" rel="noopener" aria-label="View the full-size inference latency and accuracy comparison">
+      <img src="assets/speed.png" width="1252" height="1032" alt="Latency versus OVO-Bench episodic memory accuracy for MaLoW and four baselines. MaLoW (Qwen3.5-9B) has a median profiled latency of 153 milliseconds and the highest EPM score among the compared models." loading="lazy" decoding="async">
+    </a>
+    <figcaption><strong>Latency–accuracy tradeoffs.</strong> MaLoW and baselines on the Episodic Memory (EPM) task of OVO-Bench. Lower latency and higher EPM scores are better; marker size indicates model size. Select the figure to view it at full size.</figcaption>
+  </figure>
+</div>
+<div class="container blog main" id="qualitative">
+  <h2>Qualitative Results</h2>
+  <p class="text">Streaming video examples show how MaLoW recalls earlier evidence and combines it with the current observation. Choose a sample, then press 'Play video'. Use fullscreen to inspect the annotations.</p>
+</div>
+<div class="container blog large gray-linear">
+  <section class="video-demo" data-video-demo aria-labelledby="streaming-examples-heading">
+    <!-- <h3 id="streaming-examples-heading">Streaming Video Understanding</h3> -->
+    <h4 data-video-title>SA-01 — Remembering an earlier advertisement</h4>
+    <div class="video-stage" data-player-stage hidden>
+      <video id="qualitative-player" width="1920" height="1080" preload="none" playsinline poster="assets/figures/video-posters/sa-03.jpg" aria-label="Streaming video example" aria-describedby="video-caption"></video>
+      <button type="button" class="video-play" data-play-video>Play video</button>
+    </div>
+    <div class="video-details">
+      <p id="video-caption" data-video-caption>This later mall view no longer shows the earlier celebrity display.</p>
+      <a data-original-video href="https://huggingface.co/datasets/zhuomingliu/MaLoW_others/resolve/554a35283c41fe089a32af778e6387c23112f9dc/homepage-videos/MaLoW_SA-03_visual_recall.mp4" target="_blank" rel="noopener">Open original video</a>
+    </div>
+    <p class="video-status" data-video-status role="status" aria-live="polite"></p>
+    <div class="video-selector" data-video-selector role="group" aria-label="Select a streaming video example" hidden>
+      <button type="button" aria-pressed="true" aria-controls="qualitative-player" data-sample="SA-01" data-title="Remembering an earlier advertisement" data-caption="This later mall view no longer shows the earlier celebrity display." data-video-src="https://huggingface.co/datasets/zhuomingliu/MaLoW_others/resolve/554a35283c41fe089a32af778e6387c23112f9dc/homepage-videos/MaLoW_SA-03_visual_recall.mp4" data-poster="assets/figures/video-posters/sa-03.jpg"><span class="sample-id">SA-01</span><span class="sample-title">Remembering an earlier advertisement</span></button>
+<button type="button" aria-pressed="false" aria-controls="qualitative-player" data-sample="SA-02" data-title="Remembering an earlier price" data-caption="The stall and its price sign are absent from this later street view." data-video-src="https://huggingface.co/datasets/zhuomingliu/MaLoW_others/resolve/554a35283c41fe089a32af778e6387c23112f9dc/homepage-videos/MaLoW_SA-01_visual_recall.mp4" data-poster="assets/figures/video-posters/sa-01.jpg"><span class="sample-id">SA-02</span><span class="sample-title">Remembering an earlier price</span></button>
+<button type="button" aria-pressed="false" aria-controls="qualitative-player" data-sample="SA-03" data-title="Remembering an earlier color" data-caption="The current indoor scene does not show the earlier boots." data-video-src="https://huggingface.co/datasets/zhuomingliu/MaLoW_others/resolve/554a35283c41fe089a32af778e6387c23112f9dc/homepage-videos/MaLoW_SA-06_visual_recall.mp4" data-poster="assets/figures/video-posters/sa-06.jpg"><span class="sample-id">SA-03</span><span class="sample-title">Remembering an earlier color</span></button>
+<button type="button" aria-pressed="false" aria-controls="qualitative-player" data-sample="SA-04" data-title="Remembering the first phone brand" data-caption="This later bar scene no longer shows the first phone close-up." data-video-src="https://huggingface.co/datasets/zhuomingliu/MaLoW_others/resolve/554a35283c41fe089a32af778e6387c23112f9dc/homepage-videos/MaLoW_SA-21_visual_recall.mp4" data-poster="assets/figures/video-posters/sa-21.jpg"><span class="sample-id">SA-04</span><span class="sample-title">Remembering the first phone brand</span></button>
+<button type="button" aria-pressed="false" aria-controls="qualitative-player" data-sample="OVO-01" data-title="Remembering an earlier object" data-caption="The current sofa and TV view does not show the coat-rack corner." data-video-src="https://huggingface.co/datasets/zhuomingliu/MaLoW_others/resolve/554a35283c41fe089a32af778e6387c23112f9dc/homepage-videos/MaLoW_OVO-02_visual_recall.mp4" data-poster="assets/figures/video-posters/ovo-02.jpg"><span class="sample-id">OVO-01</span><span class="sample-title">Remembering an earlier object</span></button>
+<button type="button" aria-pressed="false" aria-controls="qualitative-player" data-sample="OVO-02" data-title="Memory + the current action" data-caption="The current action is slicing beef. The preceding recipe step is out of view." data-video-src="https://huggingface.co/datasets/zhuomingliu/MaLoW_others/resolve/554a35283c41fe089a32af778e6387c23112f9dc/homepage-videos/MaLoW_OVO-05_visual_recall.mp4" data-poster="assets/figures/video-posters/ovo-05.jpg"><span class="sample-id">OVO-02</span><span class="sample-title">Memory + the current action</span></button>
+<button type="button" aria-pressed="false" aria-controls="qualitative-player" data-sample="OVO-03" data-title="Memory accumulates on-screen occurrences" data-caption="The athlete close-up does not show how many jump occurrences preceded it." data-video-src="https://huggingface.co/datasets/zhuomingliu/MaLoW_others/resolve/554a35283c41fe089a32af778e6387c23112f9dc/homepage-videos/MaLoW_OVO-10_visual_recall.mp4" data-poster="assets/figures/video-posters/ovo-10.jpg"><span class="sample-id">OVO-03</span><span class="sample-title">Memory accumulates on-screen occurrences</span></button>
+<button type="button" aria-pressed="false" aria-controls="qualitative-player" data-sample="OVO-04" data-title="Remembering a spatial relationship" data-caption="The current wall view contains neither the clock nor the television." data-video-src="https://huggingface.co/datasets/zhuomingliu/MaLoW_others/resolve/554a35283c41fe089a32af778e6387c23112f9dc/homepage-videos/MaLoW_OVO-01_visual_recall.mp4" data-poster="assets/figures/video-posters/ovo-01.jpg"><span class="sample-id">OVO-04</span><span class="sample-title">Remembering a spatial relationship</span></button>
+<button type="button" aria-pressed="false" aria-controls="qualitative-player" data-sample="OVO-05" data-title="memory help the occlude current observation" data-caption="Combining earlier evidence with the current observation." data-video-src="https://huggingface.co/datasets/zhuomingliu/MaLoW_others/resolve/554a35283c41fe089a32af778e6387c23112f9dc/homepage-videos/MaLoW_memory_observation_sample6.mp4" data-poster="assets/figures/video-posters/sample6.jpg"><span class="sample-id">OVO-05</span><span class="sample-title">memory help the occlude current observation</span></button>
+    </div>
+    <noscript><div class="video-fallback"><p>Open an original video to watch an example:</p><ol><li><a href="https://huggingface.co/datasets/zhuomingliu/MaLoW_others/resolve/554a35283c41fe089a32af778e6387c23112f9dc/homepage-videos/MaLoW_SA-03_visual_recall.mp4">SA-01 — Remembering an earlier advertisement</a></li><li><a href="https://huggingface.co/datasets/zhuomingliu/MaLoW_others/resolve/554a35283c41fe089a32af778e6387c23112f9dc/homepage-videos/MaLoW_SA-01_visual_recall.mp4">SA-02 — Remembering an earlier price</a></li><li><a href="https://huggingface.co/datasets/zhuomingliu/MaLoW_others/resolve/554a35283c41fe089a32af778e6387c23112f9dc/homepage-videos/MaLoW_SA-06_visual_recall.mp4">SA-03 — Remembering an earlier color</a></li><li><a href="https://huggingface.co/datasets/zhuomingliu/MaLoW_others/resolve/554a35283c41fe089a32af778e6387c23112f9dc/homepage-videos/MaLoW_SA-21_visual_recall.mp4">SA-04 — Remembering the first phone brand</a></li><li><a href="https://huggingface.co/datasets/zhuomingliu/MaLoW_others/resolve/554a35283c41fe089a32af778e6387c23112f9dc/homepage-videos/MaLoW_OVO-02_visual_recall.mp4">OVO-01 — Remembering an earlier object</a></li><li><a href="https://huggingface.co/datasets/zhuomingliu/MaLoW_others/resolve/554a35283c41fe089a32af778e6387c23112f9dc/homepage-videos/MaLoW_OVO-05_visual_recall.mp4">OVO-02 — Memory + the current action</a></li><li><a href="https://huggingface.co/datasets/zhuomingliu/MaLoW_others/resolve/554a35283c41fe089a32af778e6387c23112f9dc/homepage-videos/MaLoW_OVO-10_visual_recall.mp4">OVO-03 — Memory accumulates on-screen occurrences</a></li><li><a href="https://huggingface.co/datasets/zhuomingliu/MaLoW_others/resolve/554a35283c41fe089a32af778e6387c23112f9dc/homepage-videos/MaLoW_OVO-01_visual_recall.mp4">OVO-04 — Remembering a spatial relationship</a></li><li><a href="https://huggingface.co/datasets/zhuomingliu/MaLoW_others/resolve/554a35283c41fe089a32af778e6387c23112f9dc/homepage-videos/MaLoW_memory_observation_sample6.mp4">OVO-05 — memory help the occlude current observation</a></li></ol></div></noscript>
+  </section>
+</div>
+<div class="container blog large" id="resources">
+  <h2>Resources</h2>
+  <div class="resource-grid">
+    <div class="resource-card"><h3><i class="fa-regular fa-file-pdf" aria-hidden="true"></i> Paper</h3><p>Memory as Weights: Internalizing Long-Term History for Streaming Videos.</p><p><a href="https://arxiv.org/abs/2610.22070">Read the paper on arXiv</a></p></div>
+    <div class="resource-card"><h3><i class="fa-solid fa-code" aria-hidden="true"></i> Code &amp; Evaluation</h3><p><a href="https://github.com/dragonlzm/MaLoW">Code on GitHub</a></p><ul><li><a href="https://github.com/dragonlzm/MaLoW/blob/main/docs/video_evaluation.md">Video evaluation guide</a></li></ul></div>
+    <div class="resource-card"><h3><i class="fa-regular fa-face-smile" aria-hidden="true"></i> Hugging Face</h3><p><a href="https://huggingface.co/collections/zhuomingliu/malow-6abf1cddce6196fc0bf08a8c">Browse all six checkpoints here</a>.</p><p class="resource-status">The corresponding Qwen3.5 or Qwen3-VL base model is also required.</p></div>
+  </div>
+</div>
+<div class="container blog main" id="next">
+  <h2>What To Add Next</h2>
+  <p class="text">Evaluation code and model checkpoints are available now. The following releases are planned.</p>
+  <div class="timeline">
+    <div class="timeline-item"><h3>Training Code</h3><p>Code for training MaLoW memory modules will be released in the project repository.</p></div>
+    <div class="timeline-item"><h3>Training Data</h3><p>MaLoW-Instruct streaming video training data will be released.</p></div>
+  </div>
+</div>
+<div class="container blog main" id="citation">
+  <h2>Citation</h2>
+  <pre><code>@misc{liu2026memoryweightsinternalizinglongterm,
+      title={Memory as Weights: Internalizing Long-Term History for Streaming Videos}, 
+      author={Zhuoming Liu and Jinhong Lin and Lin Zhang and Yiwu Zhong and Yin Li},
+      year={2026},
+      eprint={2610.22070},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2610.22070}, 
+}</code></pre>
+</div>
+</main>
+<footer><div class="container"><p>This website is built on the <a href="https://shikun.io/projects/clarity">Clarity Template</a>, designed by <a href="https://shikun.io/">Shikun Liu</a>.</p></div></footer>
+</body>
+</html>

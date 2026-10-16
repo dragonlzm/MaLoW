@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "models": {
+    "video-9b": {
+      "repo_id": "zhuomingliu/MaLoW-Qwen3.5-9B",
+      "base": "9B",
+      "revision": "63bb2737cf6d4fb16a450f11352c3426f10bbd40"
+    },
+    "video-4b": {
+      "repo_id": "zhuomingliu/MaLoW-Qwen3.5-4B",
+      "base": "4B",
+      "revision": "6503c6f623c153a976d792d42839fdb61744c124"
+    },
+    "video-2b": {
+      "repo_id": "zhuomingliu/MaLoW-Qwen3.5-2B",
+      "base": "2B",
+      "revision": "1971befed9056d196e0dd65699a08f411cb50e91"
+    },
+    "video-0.8b": {
+      "repo_id": "zhuomingliu/MaLoW-Qwen3.5-0.8B",
+      "base": "0.8B",
+      "revision": "c57e16b948e527b8e4fa81cd775e11d66a7fef21"
+    },
+    "video-4b-last4s": {
+      "repo_id": "zhuomingliu/MaLoW-Qwen3.5-4B-Last4s",
+      "base": "4B",
+      "revision": "31f55e2aad3ea51b1ef482a807408fd1b70a3308"
+    },
+    "video-qwen3vl-4b-last8s": {
+      "repo_id": "zhuomingliu/MaLoW-Qwen3-VL-4B-Last8s",
+      "base": "qwen3-vl-4b",
+      "revision": "0361899685be730884fb03700af6b339553de41b"
+    }
+  },
+  "bases": {
+    "9B": {
+      "repo_id": "Qwen/Qwen3.5-9B",
+      "revision": "c202236235762e1c871ad0ccb60c8ee5ba337b9a"
+    },
+    "4B": {
+      "repo_id": "Qwen/Qwen3.5-4B",
+      "revision": "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a"
+    },
+    "2B": {
+      "repo_id": "Qwen/Qwen3.5-2B",
+      "revision": "15852e8c16360a2fea060d615a32b45270f8a8fc"
+    },
+    "0.8B": {
+      "repo_id": "Qwen/Qwen3.5-0.8B",
+      "revision": "2fc06364715b967f1860aea9cf38778875588b17"
+    },
+    "qwen3-vl-4b": {
+      "repo_id": "Qwen/Qwen3-VL-4B-Instruct",
+      "revision": "ebb281ec70b05090aa6165b016eac8ec08e71b17"
+    }
+  },
+  "collection_url": "https://huggingface.co/collections/zhuomingliu/malow-6abf1cddce6196fc0bf08a8c"
+}
