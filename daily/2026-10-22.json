@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-22",
+  "models": [
+    {
+      "repo_id": "zhuomingliu/MaLoW-Qwen3-VL-4B-Last8s",
+      "downloads_30d": 21,
+      "downloads_all_time": 21,
+      "observed_at": "2026-10-22T14:32:57.007792+00:00"
+    },
+    {
+      "repo_id": "zhuomingliu/MaLoW-Qwen3.5-0.8B",
+      "downloads_30d": 15,
+      "downloads_all_time": 15,
+      "observed_at": "2026-10-22T14:32:57.111573+00:00"
+    },
+    {
+      "repo_id": "zhuomingliu/MaLoW-Qwen3.5-2B",
+      "downloads_30d": 15,
+      "downloads_all_time": 15,
+      "observed_at": "2026-10-22T14:32:57.214323+00:00"
+    },
+    {
+      "repo_id": "zhuomingliu/MaLoW-Qwen3.5-4B",
+      "downloads_30d": 17,
+      "downloads_all_time": 17,
+      "observed_at": "2026-10-22T14:32:57.317865+00:00"
+    },
+    {
+      "repo_id": "zhuomingliu/MaLoW-Qwen3.5-4B-Last4s",
+      "downloads_30d": 16,
+      "downloads_all_time": 16,
+      "observed_at": "2026-10-22T14:32:57.422964+00:00"
+    },
+    {
+      "repo_id": "zhuomingliu/MaLoW-Qwen3.5-9B",
+      "downloads_30d": 15,
+      "downloads_all_time": 15,
+      "observed_at": "2026-10-22T14:32:57.526207+00:00"
+    }
+  ]
+}
