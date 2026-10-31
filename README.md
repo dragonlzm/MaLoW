@@ -41,6 +41,10 @@ MaLoW gives vision-language models a memory of earlier observations through evol
 - **Strong Performance:** On the backward split of OVO-Bench, MaLoW outperforms prior memory approaches by 3.9%-11.8% across different video backbones while incurring only modest latency overhead. Beyond streaming video understanding, MaLoW also generalizes to vision-language-action models, improving the action success rate on Simpler WidowX by 9.3%.
 
 
+## Updates
+- **Oct 30, 2026:** Added support for MaLoW with text-based memory evaluation. See the [evaluation guide](docs/malow_w_text_summary_evaluation.md).
+- **Oct 15, 2026:** Released the [checkpoints](#checkpoints) and [evaluation code](#evaluation).
+
 ## Contents
 - [Install Env](#install-environment)
 - [Checkpoints](#checkpoints)
@@ -59,9 +63,6 @@ Please follow the instruction [here](docs/env_prep.md) to finish the environment
 ## Checkpoints
 
 Browse all six checkpoints in the **[MaLoW collection](https://huggingface.co/collections/zhuomingliu/malow-6abf1cddce6196fc0bf08a8c)**.
-
-[Daily download statistics](https://github.com/dragonlzm/MaLoW/tree/download-stats)
-and [counting methodology](docs/download_statistics.md) are available for each checkpoint.
 
 Download only the model you need. These packages contain MaLoW memory weights and the corresponding **Qwen3.5 or Qwen3-VL base model is also required**.
 | Model | Checkpoint |
@@ -83,7 +84,8 @@ python -m malow.download --model video-9b --output checkpoints --with-base
 For video, choose `video-9b`, `video-4b`, `video-4b-last4s`, `video-qwen3vl-4b-last8s`, `video-2b`, or `video-0.8b`. The `video-4b-last4s` variant uses four current-observation frames from the last four seconds. `video-qwen3vl-4b-last8s` uses eight frames from the last eight seconds with `Qwen/Qwen3-VL-4B-Instruct`, while the remaining MaLoW models use two frames from the last two seconds.
 
 ## Evaluation
-- [Video evaluation: environment, data, models, and commands](docs/video_evaluation.md)
+- [MaLoW evaluation: environment, data, models, and commands](docs/video_evaluation.md)
+- [MaLoW with text-based memory evaluation: environment, data, models, and commands](docs/malow_w_text_summary_evaluation.md)
 
 Video evaluation also supports question-driven memory updates (`--eval-mode interactive`) and fixed-gap rollout (`--eval-mode fixed-gap --rollout-step-seconds 2`). The original offline evaluator remains the default. See the [interactive evaluation commands and frame-resolution guide](docs/video_evaluation.md#6-interactive-evaluation).
 

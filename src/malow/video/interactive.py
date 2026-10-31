@@ -131,6 +131,7 @@ class InteractiveSession:
     skipped_verifications: int = 0
     next_tick: int = 1
     last_question_time: float | None = None
+    on_segment: Callable | None = field(default=None, repr=False)
 
     def encoder_end(self, question_time: float) -> float:
         """Last second of context the encoder may see for a question at ``question_time``."""
@@ -278,23 +279,26 @@ def _advance_to_time(
         frame_times = block_frame_times(
             session.config, session.origin, session.consumed_blocks, stop
         )
-        encoder_inputs = build_segment_encoder_inputs(
-            processor,
-            encoder_text,
-            video_path,
-            frame_times,
-            session.config,
-            args,
-            annotate_temporal_patch_size,
-            device=device,
-        )
-        model.interactive_update(encoder_inputs, session.state)
+        if not getattr(args, "text_cache_base_only", False):
+            encoder_inputs = build_segment_encoder_inputs(
+                processor,
+                encoder_text,
+                video_path,
+                frame_times,
+                session.config,
+                args,
+                annotate_temporal_patch_size,
+                device=device,
+            )
+            model.interactive_update(encoder_inputs, session.state)
         # The verification control re-encodes from here to ask "what if the carried state
         # were dropped?", so it has to be the start of the *last* forward, not of the
         # whole catch-up.
         session.last_segment_start = session.consumed_blocks
         session.consumed_blocks = stop
         session.segments += 1
+        if session.on_segment is not None:
+            session.on_segment(video_path, frame_times)
     return target - first_block
 
 
@@ -306,6 +310,9 @@ def advance_session(model, processor, session, encoder_text, video_path, questio
     question_time = max(session.origin, clamp_question_time(video_path, question_time))
     if session.last_question_time is not None and question_time < session.last_question_time - 1e-9:
         raise ValueError("An interactive session cannot move backwards in time.")
+    if getattr(args, "text_summary", False) and session.on_segment is None:
+        from malow.video.text_summary import attach_summary
+        attach_summary(model, processor, session, video_path, args, device)
     prior = session.consumed_blocks
     step = session.config.rollout_step_seconds
     if step is not None:
@@ -530,4 +537,7 @@ def describe_streaming_path(model: Any) -> str:
 def finish_session(session):
     """Release GPU tensors; retain only the small verification report."""
     session.state = None
+    session.on_segment = None
+    if hasattr(session, "text_summary"):
+        del session.text_summary
     return session

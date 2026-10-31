@@ -25,6 +25,8 @@ from malow.video.interactive import (
     clamp_question_time,
 )
 from malow.video.sampling import load_c2l_base_tail_frames
+from malow.video.progress import (PredictionJournal, bind_session, save_session, saved_session,
+                                 cache_get, cache_put, digest, file_identity)
 OPTION_LETTERS = tuple('ABCD')
 STREAMINGBENCH_VIDEO_TOTAL_PIXELS = 469762048
 STREAMINGBENCH_VIDEO_MAX_PIXELS = 786432
@@ -306,6 +308,8 @@ def entry_questions(entry: dict[str, Any]) -> list[dict[str, Any]]:
     return questions if isinstance(questions, list) else []
 
 def question_id(task: str, entry_idx: int, question_idx: int, question: dict[str, Any]) -> str:
+    entry_idx = question.get("_source_entry_index", entry_idx)
+    question_idx = question.get("_source_question_index", question_idx)
     return f"{task}:{entry_idx}:{question_idx}:{question.get('time_stamp', '')}"
 
 def count_questions(entries: list[tuple[int, dict[str, Any]]], task: str, done: set[str] | None=None) -> tuple[int, int]:
@@ -321,6 +325,36 @@ def count_questions(entries: list[tuple[int, dict[str, Any]]], task: str, done: 
 
 def shard_entries(entries: list[Any], rank: int, world_size: int) -> list[tuple[int, Any]]:
     return [(idx, entry) for idx, entry in enumerate(entries) if idx % world_size == rank]
+
+def group_video_entries(data, task, annotation_file):
+    """Retain source identities and entry-local SQA context while grouping videos."""
+    groups = {}
+    for entry_idx, entry in enumerate(data):
+        path = str(Path(absolutize_video_path(entry["video_path"], annotation_file)).resolve())
+        if path not in groups:
+            groups[path] = (entry_idx, {"video_path": path, "questions": []})
+        context = "" if task == "sqa" else None
+        for question_idx, original in enumerate(entry_questions(entry)):
+            question = dict(original, _source_entry_index=entry_idx,
+                            _source_question_index=question_idx, _source_context=context)
+            groups[path][1]["questions"].append(question)
+            if task == "sqa":
+                if not context:
+                    context = "Here is the contextual information related to the video. "
+                opts = format_options(list(original.get("options", [])))
+                context += (f"At timestamp {original['time_stamp']}, the following question and answer occurred: "
+                            f"Question: {original.get('question')}; Options: {', '.join(opts)}; "
+                            f"Answer: {original.get('answer')}. ")
+    return [groups[path] for path in sorted(groups)]
+
+
+def streaming_journal(args, rank_path, entries, task):
+    if not getattr(args, "checkpoint_progress", False):
+        return None
+    expected = {question_id(task, entry_idx, i, q)
+                for entry_idx, entry in entries for i, q in enumerate(entry_questions(entry))}
+    return PredictionJournal(rank_path, lambda row: row["question_id"], expected)
+
 
 def streamingbench_fps(start: int, end: int) -> float:
     duration = max(0, int(end) - int(start))
@@ -684,13 +718,19 @@ def prepare_c2l_base_inputs_single(
     start: int | float,
     end: int | float,
     args: argparse.Namespace,
+    summary_prefix: str | None = None,
 ):
     """Base-model inputs for one interactive turn, matching the offline base branch."""
     from malow.video.loader import remove_empty_think_block
 
     device = model_input_device(model)
     base_messages = [build_c2l_base_messages(prompt, video_path, start, end, args)]
-    base_texts = remove_empty_think_block(apply_chat_template(processor, base_messages, args))
+    if summary_prefix:
+        from malow.video.text_summary import prepend_memory
+        prepend_memory(base_messages[0], summary_prefix)
+    base_texts = apply_chat_template(processor, base_messages, args)
+    if not getattr(args, "text_cache_base_only", False):
+        base_texts = remove_empty_think_block(base_texts)
     if not args.base_input_video:
         return processor(
             text=base_texts, padding=True, padding_side="left", return_tensors="pt"
@@ -781,11 +821,39 @@ def interactive_answer(
         annotate_video_temporal_patch_size,
         device=device,
     )
+    summary_kwargs = {}
+    if getattr(args, "text_summary", False):
+        from malow.video.text_summary import answer_prefix, trace_answer
+        summary_kwargs["summary_prefix"] = answer_prefix(session, question_time)
+        trace_answer(args, session, question_time, prompt)
+    answer_key = None
+    if getattr(args, "checkpoint_progress", False):
+        answer_key = {"now": question_time, "start": base_start, "prompt": prompt,
+                      "video": file_identity(video_path),
+                      "memory": digest(getattr(getattr(session, "text_summary", None), "memory", None))}
+        cached = cache_get(args, session, "answer", answer_key)
+        if cached is not None:
+            if verify and new_blocks and session.has_context():
+                verify_session_against_single_pass(model, processor, session, encoder_text, video_path,
+                                                  args, annotate_video_temporal_patch_size, device=device)
+            if cached["fallback"]:
+                session.fallback_turns += 1
+            return cached["prediction"], new_blocks, cached["fallback"]
+    if getattr(args, "text_cache_base_only", False):
+        from malow.video.text_summary import generate_base_answer
+        inputs = prepare_c2l_base_inputs_single(model, processor, prompt, video_path,
+                                               base_start, question_time, args, **summary_kwargs)
+        prediction = generate_base_answer(model, processor, inputs, args)
+        fallback = not session.has_context()
+        session.fallback_turns += int(fallback)
+        cache_put(args, session, "answer", answer_key, {"prediction": prediction, "fallback": fallback})
+        return prediction, new_blocks, fallback
     if not session.has_context():
         # Not even one temporal block of context yet: fall back to the offline single pass
         # over the short prefix, without committing anything to the streaming state.
         prediction = generate_c2l_batch(model, processor, [(prompt, video_path, base_start, question_time)], args)[0]
         session.fallback_turns += 1
+        cache_put(args, session, "answer", answer_key, {"prediction": prediction, "fallback": True})
         return prediction, new_blocks, True
 
     if verify and new_blocks:
@@ -800,11 +868,12 @@ def interactive_answer(
             device=device,
         )
     base_inputs = prepare_c2l_base_inputs_single(
-        model, processor, prompt, video_path, base_start, question_time, args
+        model, processor, prompt, video_path, base_start, question_time, args, **summary_kwargs
     )
     prediction = generate_with_loras_single(
         model, processor, base_inputs, session_generated_loras(model, session), args
     )
+    cache_put(args, session, "answer", answer_key, {"prediction": prediction, "fallback": False})
     return prediction, new_blocks, False
 
 def evaluate_mc_task_interactive(
@@ -825,7 +894,15 @@ def evaluate_mc_task_interactive(
     config = interactive_config_from_args(model, args)
     if rank == 0:
         print(f"task={task} {describe_streaming_path(model)}")
-    done = done_ids(rank_path)
+    journal = streaming_journal(args, rank_path, entries, task)
+    done = set(journal.rows) if journal is not None else done_ids(rank_path)
+    def append_result(path, rows):
+        if journal is None:
+            append_rows(path, rows)
+        else:
+            save_session(args, session)
+            for row in rows:
+                journal.append(row)
     total, completed = count_questions(entries, task, done)
     progress = make_progress_bar(args, task, rank, world_size, total, completed)
     tracked: list[Any] = []
@@ -834,7 +911,10 @@ def evaluate_mc_task_interactive(
             video_path = absolutize_video_path(entry["video_path"], annotation_file)
             validate_video_path(video_path)
             questions = entry_questions(entry)
+            recovery_key = [task, video_path] if getattr(args, "streaming_group_by_video", False) else [task, entry_idx, video_path]
             if all(question_id(task, entry_idx, i, q) in done for i, q in enumerate(questions)):
+                if journal is not None:
+                    tracked.append(saved_session(args, config, recovery_key))
                 continue
 
             # Build the SQA running context in the annotation's own order so the prompts stay
@@ -853,11 +933,13 @@ def evaluate_mc_task_interactive(
                         f"Answer: {question.get('answer')}. "
                     )
 
+            contexts = [q.get("_source_context", contexts[i]) for i, q in enumerate(questions)]
             order = sorted(
                 range(len(questions)),
                 key=lambda index: (interactive_timestamp(questions[index]["time_stamp"]), index),
             )
             session = new_session(model, config, origin=0.0)
+            bind_session(args, session, recovery_key)
             tracked.append(session)
             verify = select_verification_session(args)
             encoder_text = remove_empty_think_block(
@@ -866,10 +948,13 @@ def evaluate_mc_task_interactive(
 
             for turn_index, question_idx in enumerate(order):
                 question = questions[question_idx]
+                question_context = contexts[question_idx]
+                entry_idx = question.get("_source_entry_index", entry_idx)
+                question_idx = question.get("_source_question_index", question_idx)
                 qid = question_id(task, entry_idx, question_idx, question)
                 timestamp = interactive_timestamp(question["time_stamp"])
                 start = max(0, timestamp - args.context_time) if args.context_time > 0 else 0
-                prompt, options = make_mc_prompt(question, contexts[question_idx])
+                prompt, options = make_mc_prompt(question, question_context)
                 if qid in done:
                     # Still advance the stream so later questions see the same prefix.
                     advance_session(
@@ -883,6 +968,9 @@ def evaluate_mc_task_interactive(
                         annotate_video_temporal_patch_size,
                         device=model_input_device(model),
                     )
+                    session.turns += 1
+                    if not session.has_context():
+                        session.fallback_turns += 1
                     continue
 
                 prediction, new_blocks, fallback = interactive_answer(
@@ -900,7 +988,7 @@ def evaluate_mc_task_interactive(
                 session.turns += 1
                 pred_choice = infer_option(prediction, options)
                 answer = str(question.get("answer", "")).strip().upper()[:1]
-                append_rows(
+                append_result(
                     rank_path,
                     [
                         {
@@ -939,6 +1027,8 @@ def evaluate_mc_task_interactive(
     finally:
         if progress is not None:
             progress.close()
+    if journal is not None:
+        journal.require_complete()
     return tracked
 
 def evaluate_proactive_task_interactive(
@@ -958,7 +1048,15 @@ def evaluate_proactive_task_interactive(
     config = interactive_config_from_args(model, args)
     if rank == 0:
         print(f"task=proactive {describe_streaming_path(model)}")
-    done = done_ids(rank_path)
+    journal = streaming_journal(args, rank_path, entries, "proactive")
+    done = set(journal.rows) if journal is not None else done_ids(rank_path)
+    def append_result(path, rows):
+        if journal is None:
+            append_rows(path, rows)
+        else:
+            save_session(args, session)
+            for row in rows:
+                journal.append(row)
     total, completed = count_questions(entries, "proactive", done)
     progress = make_progress_bar(args, "proactive", rank, world_size, total, completed)
     tracked: list[Any] = []
@@ -969,7 +1067,10 @@ def evaluate_proactive_task_interactive(
             validate_video_path(video_path)
             for question_idx, question in enumerate(entry_questions(entry)):
                 qid = question_id("proactive", entry_idx, question_idx, question)
+                recovery_key = ["proactive", qid, video_path]
                 if qid in done:
+                    if journal is not None:
+                        tracked.append(saved_session(args, config, recovery_key))
                     continue
                 start = parse_timestamp(question["time_stamp"])
                 gt_time = parse_timestamp(question["ground_truth_time_stamp"])
@@ -985,6 +1086,7 @@ def evaluate_proactive_task_interactive(
 
                 # The proactive context window starts at the question, not at the video start.
                 session = new_session(model, config, origin=float(start))
+                bind_session(args, session, recovery_key)
                 tracked.append(session)
                 verify = select_verification_session(args)
                 session_index += 1
@@ -1044,7 +1146,7 @@ def evaluate_proactive_task_interactive(
                 trigger_hit = answered_time is not None and gt_time <= answered_time <= end_limit
                 expected = str(question.get("ground_truth_output", "")).strip().lower()
                 output_hit = bool(expected) and expected in final_prediction.strip().lower()
-                append_rows(
+                append_result(
                     rank_path,
                     [
                         {
@@ -1083,6 +1185,8 @@ def evaluate_proactive_task_interactive(
     finally:
         if progress is not None:
             progress.close()
+    if journal is not None:
+        journal.require_complete()
     return tracked
 
 def done_ids(path: Path) -> set[str]:
@@ -1272,6 +1376,15 @@ def main() -> None:
         print(f'world_size={world_size}')
         print(f'rank barrier token={run_token}')
     task_files = resolve_task_files(args)
+    if getattr(args, "checkpoint_progress", False):
+        from malow.video.progress import guard_video_inputs
+        paths = []
+        for annotation_file in task_files.values():
+            entries = load_json(annotation_file)
+            if args.limit is not None:
+                entries = entries[:args.limit]
+            paths.extend(absolutize_video_path(entry["video_path"], annotation_file) for entry in entries)
+        guard_video_inputs(args, rank, paths)
     model, processor = load_model(args, local_rank, world_size)
     for task, annotation_file in task_files.items():
         data = load_json(annotation_file)
@@ -1280,7 +1393,11 @@ def main() -> None:
         task_dir = output_dir / task
         task_dir.mkdir(parents=True, exist_ok=True)
         rank_path = task_dir / f'rank_{rank:05d}.jsonl'
-        shard = shard_entries(data, rank, world_size)
+        if getattr(args, "streaming_group_by_video", False) and task != "proactive":
+            grouped = group_video_entries(data, task, annotation_file)
+            shard = [entry for i, entry in enumerate(grouped) if i % world_size == rank]
+        else:
+            shard = shard_entries(data, rank, world_size)
         if rank == 0:
             print(f'task={task} entries={len(data)} per-rank shard starts with {len(shard)} entries on rank0')
         if args.eval_mode != "offline":

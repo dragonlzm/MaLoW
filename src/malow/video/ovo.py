@@ -122,7 +122,7 @@ def parse_args() -> argparse.Namespace:
         parser.error('--last-seconds-1fps is for base-model evaluation.')
     return args
 
-def init_distributed() -> tuple[int, int, int]:
+def init_distributed(timeout_seconds: int | None = None) -> tuple[int, int, int]:
     import torch
     world_size = int(os.environ.get('WORLD_SIZE', '1'))
     rank = int(os.environ.get('RANK', '0'))
@@ -134,7 +134,11 @@ def init_distributed() -> tuple[int, int, int]:
             # Workers only synchronize file writes; they never exchange GPU tensors.
             # NCCL lazily allocates CUDA resources at the final barrier, which can
             # fail after inference has filled the CUDA allocator's cache.
-            torch.distributed.init_process_group(backend='gloo')
+            options = {}
+            if timeout_seconds is not None:
+                from datetime import timedelta
+                options["timeout"] = timedelta(seconds=timeout_seconds)
+            torch.distributed.init_process_group(backend='gloo', **options)
     return (rank, local_rank, world_size)
 
 def is_main_process(rank: int) -> bool:
@@ -367,7 +371,7 @@ def shard_sessions(sessions: list[list[EvalUnit]], rank: int, world_size: int) -
         return sessions
     return [session for index, session in enumerate(sessions) if index % world_size == rank]
 
-def prepare_c2l_base_inputs(model, processor, unit: EvalUnit, args: argparse.Namespace):
+def prepare_c2l_base_inputs(model, processor, unit: EvalUnit, args: argparse.Namespace, summary_prefix=None):
     """Base-model inputs for one question, matching the offline base branch."""
     from malow.video.loader import remove_empty_think_block
 
@@ -375,7 +379,12 @@ def prepare_c2l_base_inputs(model, processor, unit: EvalUnit, args: argparse.Nam
         base_messages = [build_video_text_messages(unit, args)]
     else:
         base_messages = [build_text_only_messages(unit.prompt, args)]
-    base_texts = remove_empty_think_block(apply_chat_template(processor, base_messages, args))
+    if summary_prefix:
+        from malow.video.text_summary import prepend_memory
+        prepend_memory(base_messages[0], summary_prefix)
+    base_texts = apply_chat_template(processor, base_messages, args)
+    if not getattr(args, "text_cache_base_only", False):
+        base_texts = remove_empty_think_block(base_texts)
     if not args.base_input_video:
         return processor(text=base_texts, padding=True, padding_side="left", return_tensors="pt")
 
@@ -416,6 +425,8 @@ def generate_with_loras(model, processor, base_inputs, generated_loras, args: ar
         )
     return decode_generated_outputs(processor, base_inputs.input_ids, generated_ids, args)[0]
 
+from malow.video.progress import PredictionJournal, bind_session, save_session, saved_session, ovo_key
+
 def run_interactive_sessions(model, processor, sessions: list[list[EvalUnit]], args: argparse.Namespace, rank: int):
     """Answer every question by streaming its video once, question by question."""
     from malow.video.loader import remove_empty_think_block
@@ -428,14 +439,23 @@ def run_interactive_sessions(model, processor, sessions: list[list[EvalUnit]], a
     if is_main_process(rank):
         print(f"Rank {rank} {describe_streaming_path(model)}")
     device = model_input_device(model)
-    rows: list[dict[str, Any]] = []
+    journal = None
+    if getattr(args, "checkpoint_progress", False):
+        expected = {(unit.task_name, unit.doc['id'], unit.round_idx) for group in sessions for unit in group}
+        journal = PredictionJournal(rank_output_path(args, rank), ovo_key, expected)
+    rows: list[dict[str, Any]] = list(journal.rows.values()) if journal is not None else []
     tracked: list[Any] = []
 
     from tqdm import tqdm
 
     iterator = tqdm(sessions, desc=f"Rank {rank} OVO-Bench interactive", disable=not is_main_process(rank))
     for session_index, session_units in enumerate(iterator):
+        recovery_key = list(interactive_session_key(session_units[0], args))
+        if journal is not None and all((unit.task_name, unit.doc['id'], unit.round_idx) in journal.rows for unit in session_units):
+            tracked.append(saved_session(args, config, recovery_key))
+            continue
         session = new_session(model, config)
+        bind_session(args, session, recovery_key)
         verify = session_index < args.interactive_verify_sessions
         tracked.append(session)
         for turn_index, unit in enumerate(session_units):
@@ -456,8 +476,23 @@ def run_interactive_sessions(model, processor, sessions: list[list[EvalUnit]], a
                 device=device,
             )
             session.turns += 1
+            if journal is not None and (unit.task_name, unit.doc['id'], unit.round_idx) in journal.rows:
+                if not session.has_context():
+                    session.fallback_turns += 1
+                continue
+            summary_kwargs = {}
+            if getattr(args, "text_summary", False):
+                from malow.video.text_summary import answer_prefix, trace_answer
+                summary_kwargs["summary_prefix"] = answer_prefix(session, session.last_question_time)
+                trace_answer(args, session, session.last_question_time, unit.prompt)
 
-            if session.has_context():
+            if getattr(args, "text_cache_base_only", False):
+                from malow.video.text_summary import generate_base_answer
+                base_inputs = prepare_c2l_base_inputs(model, processor, unit, args, **summary_kwargs)
+                prediction = generate_base_answer(model, processor, base_inputs, args)
+                fallback = not session.has_context()
+                session.fallback_turns += int(fallback)
+            elif session.has_context():
                 if verify and new_blocks:
                     verify_session_against_single_pass(
                         model,
@@ -469,7 +504,7 @@ def run_interactive_sessions(model, processor, sessions: list[list[EvalUnit]], a
                         annotate_video_temporal_patch_size,
                         device=device,
                     )
-                base_inputs = prepare_c2l_base_inputs(model, processor, unit, args)
+                base_inputs = prepare_c2l_base_inputs(model, processor, unit, args, **summary_kwargs)
                 prediction = generate_with_loras(
                     model, processor, base_inputs, session_generated_loras(model, session), args
                 )
@@ -493,8 +528,14 @@ def run_interactive_sessions(model, processor, sessions: list[list[EvalUnit]], a
                 "segments": session.segments,
                 "offline_fallback": fallback,
             }
-            rows.append(to_jsonable(row))
+            row = to_jsonable(row)
+            if journal is not None:
+                save_session(args, session)
+                journal.append(row)
+            rows.append(row)
         finish_session(session)
+    if journal is not None:
+        journal.require_complete()
     return rows, tracked
 
 def shard_units(units: list[EvalUnit], rank: int, world_size: int) -> list[EvalUnit]:
@@ -1091,12 +1132,19 @@ def main() -> None:
     args = parse_args()
     if args.no_video and args.c2l_checkpoint:
         raise ValueError('--no-video is only supported for base model evaluation; Video C2L requires video encoder input.')
-    rank, local_rank, world_size = init_distributed()
+    # Caption/compression work can cause hours of rank skew on long videos.
+    # Preserve the historical timeout for every existing evaluation mode.
+    rank, local_rank, world_size = (
+        init_distributed(timeout_seconds=86400) if getattr(args, "text_summary", False)
+        else init_distributed()
+    )
     task_names = normalize_task_list(args.tasks)
     video_root = None if args.no_video else resolve_video_root(args.video_root, auto_download=not args.no_auto_download_videos)
     all_units = build_eval_units(task_names, video_root, args.limit, no_video=args.no_video, annotation_root=args.annotation_root)
     guard_interactive_run(args, world_size)
     init_resolution_log(args, rank)
+    from malow.video.progress import guard_video_inputs
+    guard_video_inputs(args, rank, [unit.video_path for unit in all_units])
     sessions = shard_sessions(build_interactive_sessions(all_units, args), rank, world_size) if args.eval_mode != "offline" else None
     units = shard_units(all_units, rank, world_size)
     if is_main_process(rank):
@@ -1113,7 +1161,8 @@ def main() -> None:
     else:
         rows, tracked = run_interactive_sessions(model, processor, sessions, args, rank)
         write_interactive_report(args, rank, tracked)
-    write_jsonl(rank_output_path(args, rank), rows)
+    if not getattr(args, "checkpoint_progress", False):
+        write_jsonl(rank_output_path(args, rank), rows)
     print(f'Rank {rank} wrote {len(rows)} rows: {rank_output_path(args, rank)}')
     if world_size > 1:
         torch.distributed.barrier()

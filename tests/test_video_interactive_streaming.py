@@ -1,8 +1,8 @@
 """End-to-end wiring of StreamingBench interactive Video C2L evaluation.
 
-StreamingBench annotations already group questions under one video, so the driver's job is
-to answer them in video-clock order off a single streaming state, and to turn proactive
-polling into a session that advances one `--proactive-step` at a time. The model and the
+The legacy driver shares state within each annotation entry; opt-in video grouping
+also joins repeated video paths across entries. Questions advance in video-clock
+order, and proactive polling advances one `--proactive-step` at a time. The model and the
 video decoder are stubbed; the control flow is real.
 """
 

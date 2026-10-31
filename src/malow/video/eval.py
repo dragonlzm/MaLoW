@@ -112,6 +112,12 @@ def build_command(args):
             cmd += ["--" + name.replace("_", "-"), str(getattr(args, name))]
     if args.limit:
         cmd += ["--limit", str(args.limit)]
+    for flag in ("text_summary", "checkpoint_progress", "streaming_group_by_video", "text_cache_base_only"):
+        if getattr(args, flag, False):
+            cmd += ["--" + flag.replace("_", "-")]
+    for name in ("text_cache_source", "text_cache_mode", "text_cache_miss"):
+        if hasattr(args, name):
+            cmd += ["--" + name.replace("_", "-"), str(getattr(args, name))]
     return cmd
 
 
