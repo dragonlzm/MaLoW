@@ -68,16 +68,16 @@ Generating captions and summaries takes longer than reusing the prepared summari
 
 
 ## 7. Evaluate with prepared summaries
-Generating video captions through sequential video rollouts and subsequently compressing them into text-based summaries can be time-consuming. To accelerate evaluation, you can download the [precomputed captions and summaries](https://huggingface.co/datasets/zhuomingliu/testDataset/tree/main/eval/malow-text-summary-30s-20261027) and extract the cache for each benchmark into its respective directory:
+Generating video captions through sequential video rollouts and subsequently compressing them into text-based summaries can be time-consuming. To accelerate evaluation, you can download the [precomputed captions and summaries](https://huggingface.co/datasets/zhuomingliu/MaLoW_others/tree/main/qwen35-9b-text-summary-30s) and extract the cache for each benchmark into its respective directory:
 
 ```bash
-hf download zhuomingliu/testDataset --repo-type dataset \
-  --include 'eval/malow-text-summary-30s-20261027/*' \
+hf download zhuomingliu/MaLoW_others --repo-type dataset \
+  --include 'qwen35-9b-text-summary-30s/*' \
   --local-dir data/text-summary-download
 mkdir -p data/text-summary-cache/ovo data/text-summary-cache/streaming
-unzip data/text-summary-download/eval/malow-text-summary-30s-20261027/ovo-text-cache.zip \
+unzip data/text-summary-download/qwen35-9b-text-summary-30s/ovo-text-cache.zip \
   -d data/text-summary-cache/ovo
-unzip data/text-summary-download/eval/malow-text-summary-30s-20261027/streaming-text-cache.zip \
+unzip data/text-summary-download/qwen35-9b-text-summary-30s/streaming-text-cache.zip \
   -d data/text-summary-cache/streaming
 ```
 
