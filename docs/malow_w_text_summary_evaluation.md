@@ -135,11 +135,9 @@ under its output directory; StreamingBench also writes per-task `stats.json` fil
 | Model | Real&#8209;time | Omni&#8209;source | Proactive | Sequential&nbsp;QA | Overall |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Qwen3.5&#8209;9B (last 2s) | 82.0 | 61.0 | 38.8 | 58.0 | 71.3 |
-| Qwen3.5&#8209;9B (last 2s) with text summary | 83.1 | 62.6 | 39.6 | 57.2 | ≈72.4† |
+| Qwen3.5&#8209;9B (last 2s) with text summary | 83.1 | 62.6 | 39.6 | 57.2 | 72.4 |
 | MaLoW&nbsp;(Qwen3.5&#8209;9B) | 82.2 | 62.1 | 58.8 | 63.6 | 73.1 |
 | MaLoW&nbsp;(Qwen3.5&#8209;9B) with text summary | 83.6 | 61.2 | 60.0 | 60.4 | 73.6 |
 
 OVO averages subtask accuracies within each split, then averages the three splits. StreamingBench uses **question-weighted accuracy** with weights real:omni:proactive:SQA = **2500:1500:250:250**. Its `weighted_average.accuracy_percent` is the release metric.
 
-† The Qwen3.5-9B with text summary StreamingBench overall score is approximately 72.4,
-recalculated from the displayed task scores using the weights above.
