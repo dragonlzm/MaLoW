@@ -8,6 +8,8 @@
     },
     "server_supports/platformr/slurm_script/v1_5_1_event_order_r2_model_verified.sbatch": {
       "commit": "e257adeb497dc02d07d112cbb6372c29017e5a40",
+      "sha256": "4a14177a4298df279649c2a3f63858d1b8c5c20f43d9ffc73f973d1ffcaaad8c"
+    },
     "server_supports/platformr/slurm_script/v1_5_1_event_order_r2_unverified.sbatch": {
       "commit": "e257adeb497dc02d07d112cbb6372c29017e5a40",
       "sha256": "21deb1f567cb2fb74d1241f2ec8e8addb7e32bbac68531bfe982fb3c7f658632"
