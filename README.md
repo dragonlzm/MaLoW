@@ -17,6 +17,11 @@
 </p>
 
 <p align="center">
+  <a href="https://paperswithcode.co/api/v1/papers/2610.22070/leaderboard-badge-link?eval=40438"><img alt="MaLoW (MOSS-VL-Real-11B) on OVO-Bench, RT+BT average" src="https://paperswithcode.co/api/v1/papers/2610.22070/leaderboard-badge.svg?eval=40438&amp;live=1"></a>
+  <a href="https://paperswithcode.co/api/v1/papers/2610.22070/leaderboard-badge-link?eval=40437"><img alt="MaLoW (Qwen3-VL-4B) on StreamingBench, real-time accuracy" src="https://paperswithcode.co/api/v1/papers/2610.22070/leaderboard-badge.svg?eval=40437&amp;live=1"></a>
+</p>
+
+<p align="center">
   <a href="https://scholar.google.com/citations?user=HXOVwRAAAAAJ&hl=en">Zhuoming Liu</a><sup>1</sup>, 
   <a href="https://scholar.google.com/citations?user=v4UwIYMAAAAJ&hl=en">Jinhong Lin</a><sup>1</sup>, 
   <a href="https://scholar.google.com/citations?user=5-PDQ94AAAAJ&hl=en">Lin Zhang</a><sup>1</sup>, 
@@ -42,6 +47,7 @@ MaLoW gives vision-language models a memory of earlier observations through evol
 
 
 ## Updates
+- **Nov 26, 2026:** Added [Training code](docs/video_training.md) and release the [MaLoW-Instruct](https://huggingface.co/datasets/zhuomingliu/MaLoW-Instruct).
 - **Oct 30, 2026:** Added support for MaLoW with text-based memory evaluation. See the [evaluation guide](docs/malow_w_text_summary_evaluation.md).
 - **Oct 15, 2026:** Released the [checkpoints](#checkpoints) and [evaluation code](#evaluation).
 
