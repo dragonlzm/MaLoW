@@ -68,16 +68,16 @@ Generating captions and summaries takes longer than reusing the prepared summari
 
 
 ## 7. Evaluate with prepared summaries
-Generating video captions through sequential video rollouts and subsequently compressing them into text-based summaries can be time-consuming. To accelerate evaluation, you can download the [precomputed captions and summaries](https://huggingface.co/datasets/zhuomingliu/MaLoW_others/tree/main/qwen35-9b-text-summary-30s) and extract the cache for each benchmark into its respective directory:
+Generating video captions through sequential video rollouts and subsequently compressing them into text-based summaries can be time-consuming. To accelerate evaluation, you can download the [precomputed captions and summaries](https://huggingface.co/datasets/zhuomingliu/testDataset/tree/main/eval/malow-text-summary-30s-20261027) and extract the cache for each benchmark into its respective directory:
 
 ```bash
-hf download zhuomingliu/MaLoW_others --repo-type dataset \
-  --include 'qwen35-9b-text-summary-30s/*' \
+hf download zhuomingliu/testDataset --repo-type dataset \
+  --include 'eval/malow-text-summary-30s-20261027/*' \
   --local-dir data/text-summary-download
 mkdir -p data/text-summary-cache/ovo data/text-summary-cache/streaming
-unzip data/text-summary-download/qwen35-9b-text-summary-30s/ovo-text-cache.zip \
+unzip data/text-summary-download/eval/malow-text-summary-30s-20261027/ovo-text-cache.zip \
   -d data/text-summary-cache/ovo
-unzip data/text-summary-download/qwen35-9b-text-summary-30s/streaming-text-cache.zip \
+unzip data/text-summary-download/eval/malow-text-summary-30s-20261027/streaming-text-cache.zip \
   -d data/text-summary-cache/streaming
 ```
 
@@ -135,9 +135,11 @@ under its output directory; StreamingBench also writes per-task `stats.json` fil
 | Model | Real&#8209;time | Omni&#8209;source | Proactive | Sequential&nbsp;QA | Overall |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Qwen3.5&#8209;9B (last 2s) | 82.0 | 61.0 | 38.8 | 58.0 | 71.3 |
-| Qwen3.5&#8209;9B (last 2s) with text summary | 83.1 | 62.6 | 39.6 | 57.2 | 72.4 |
+| Qwen3.5&#8209;9B (last 2s) with text summary | 83.1 | 62.6 | 39.6 | 57.2 | ≈72.4† |
 | MaLoW&nbsp;(Qwen3.5&#8209;9B) | 82.2 | 62.1 | 58.8 | 63.6 | 73.1 |
 | MaLoW&nbsp;(Qwen3.5&#8209;9B) with text summary | 83.6 | 61.2 | 60.0 | 60.4 | 73.6 |
 
 OVO averages subtask accuracies within each split, then averages the three splits. StreamingBench uses **question-weighted accuracy** with weights real:omni:proactive:SQA = **2500:1500:250:250**. Its `weighted_average.accuracy_percent` is the release metric.
 
+† The Qwen3.5-9B with text summary StreamingBench overall score is approximately 72.4,
+recalculated from the displayed task scores using the weights above.

@@ -13,7 +13,7 @@
   <a href="https://dragonlzm.github.io/MaLoW"><img src="https://img.shields.io/badge/Project-Page-brightgreen"></a>
   <a href="https://huggingface.co/papers/2610.22070"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Homepage-purple"></a>
   <a href="https://huggingface.co/collections/zhuomingliu/malow"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Checkpoints-blue"></a>
-  <!-- <a href="?"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Dataset-orange"></a> -->
+  <a href="https://huggingface.co/datasets/zhuomingliu/MaLoW-Instruct"><img alt="MaLoW-Instruct dataset" src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Dataset-orange"></a>
 </p>
 
 <p align="center">
@@ -91,11 +91,46 @@ Video evaluation also supports question-driven memory updates (`--eval-mode inte
 
 
 ## Dataset
-> **Coming soon:** Training data will be released. Stay tuned!
+
+The public MaLoW-Instruct release includes prepared LLaVA-Video, TimeLens,
+THUMOS14, and Event-order R2 videos alongside filtered SFT replay annotations.
+The replay manifest specifies the order of 179,200 training sample occurrences
+across eight indexed shards. [MaLoW-Instruct on Hugging Face](https://huggingface.co/datasets/zhuomingliu/MaLoW-Instruct)
+
+From the repository root, activate the training environment with the
+[training dependencies](docs/env_prep.md#training-additions) and ensure
+`ffprobe` is on your path. Download the pinned release into a fresh
+`data/training` directory and audit the annotations and referenced videos.
+
+```bash
+python -m malow.training.data download --data-root data/training
+python -m malow.training.data audit --data-root data/training
+```
+
+The downloader extracts the videos into `data/training/videos/` and places
+the filtered replay manifest at `data/training/annotations/manifest.json`.
+This replay manifest is part of the full MaLoW-Instruct, and aims for helping user to reproduce the MaLoW training, we will release the full MaLoW-Instruct in the future.
 
 ## Training
 
-> **Coming soon:** Training code will be released. Stay tuned!
+To train MaLoW (Qwen3.5-9B) on eight GPUs, use the local Qwen3.5-9B base
+model from [Checkpoints](#checkpoints) and a fresh output directory.
+The replay manifest supplies 64 sample occurrences per optimizer step
+with one sample per GPU and eight gradient accumulation steps.
+
+```bash
+python -m malow.training.train --model video-9b \
+  --replay-manifest data/training/annotations/manifest.json \
+  --videos-root data/training/videos \
+  --base-model checkpoints/Qwen3.5-9B \
+  --output-dir outputs/train-9b-filtered-replay \
+  --num-processes 8 --gradient-accumulation-steps 8 --offline
+```
+
+After 2,800 steps, use `outputs/train-9b-filtered-replay/checkpoint-2800`
+for [offline evaluation on OVO-Bench and StreamingBench](docs/video_training.md#evaluate-the-reproduced-checkpoint).
+The [training guide](docs/video_training.md) also covers the other five video
+recipes and checkpoint resume.
 
 ## Contact
 Zhuoming Liu (zliu2346@wisc.edu)

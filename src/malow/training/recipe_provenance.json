@@ -1,0 +1,63 @@
+{
+  "source_commit": "e257adeb497dc02d07d112cbb6372c29017e5a40",
+  "source_repository": "Hippocampus",
+  "source_files": {
+    "server_supports/platformr/slurm_script/v1_5_1_event_order_r2_model_verified_cross_video_mc_2to1.sbatch": {
+      "commit": "e257adeb497dc02d07d112cbb6372c29017e5a40",
+      "sha256": "4ddee336faf0e401a97c518e97a663513e20149638c34d7a93f3ec0e1ab8a0c6"
+    },
+    "server_supports/platformr/slurm_script/v1_5_1_event_order_r2_model_verified.sbatch": {
+      "commit": "e257adeb497dc02d07d112cbb6372c29017e5a40",
+    "server_supports/platformr/slurm_script/v1_5_1_event_order_r2_unverified.sbatch": {
+      "commit": "e257adeb497dc02d07d112cbb6372c29017e5a40",
+      "sha256": "21deb1f567cb2fb74d1241f2ec8e8addb7e32bbac68531bfe982fb3c7f658632"
+    },
+    "server_supports/platformr/slurm_script/v1_5_1_event_order_r2_unverified_half_replacement_cross_video_mc_2to1_lr8e-5_qwen35_4b.sbatch": {
+      "commit": "e257adeb497dc02d07d112cbb6372c29017e5a40",
+      "sha256": "ba7e56a220d4cafba2461b7406624d2fcb73b7c94ecba76849216f5ac0c5992c"
+    },
+    "server_supports/platformr/slurm_script/v1_5_1_event_order_r2_unverified_half_replacement_cross_video_mc_2to1_lr8e-5_qwen35_4b_base_last4s.sbatch": {
+      "commit": "e257adeb497dc02d07d112cbb6372c29017e5a40",
+      "sha256": "4e8c1fba67ab9bfda08b158fa7f10717524d809a125f52d1886e5f0fb69ba1b0"
+    },
+    "server_supports/platformr/slurm_script/v1_5_1_event_order_r2_model_verified_cross_video_mc_2to1_lr8e-5_qwen3vl_4b_last8s.sbatch": {
+      "commit": "e257adeb497dc02d07d112cbb6372c29017e5a40",
+      "sha256": "e8b08a5dca23c6bb66e02a187b3df3a494c450315688a592bcaab79b9131516a"
+    },
+    "server_supports/platformr/slurm_script/v1_5_1_event_order_r2_model_verified_cross_video_mc_2to1_lr8e-5_qwen3vl_4b.sbatch": {
+      "commit": "e257adeb497dc02d07d112cbb6372c29017e5a40",
+      "sha256": "bb2a93228f66da90673e71c154b7c7f84a8ed0dd2cf31d5c9c0b67ff9482d8b1"
+    },
+    "server_supports/platformr/slurm_script/v1_5_1_event_order_r2_unverified_half_replacement_hallu_02p_lr8e-5_qwen3vl_4b.sbatch": {
+      "commit": "e257adeb497dc02d07d112cbb6372c29017e5a40",
+      "sha256": "bf5e0a3e2eae0366ac2d18f9aec666729ebb0d990204741295a98fba10b3f636"
+    },
+    "server_supports/platformr/slurm_script/v1_5_1_event_order_r2_model_verified_cross_video_mc_2to1_lr8e-5_qwen35_2b.sbatch": {
+      "commit": "e257adeb497dc02d07d112cbb6372c29017e5a40",
+      "sha256": "4055b69a06af9a57f6f617b8d9b97b11554264a438a983c40ddb7b922d3fb0ae"
+    },
+    "server_supports/platformr/slurm_script/v1_5_1_event_order_r2_model_verified_cross_video_mc_2to1_lr8e-5_qwen35_0_8b.sbatch": {
+      "commit": "e257adeb497dc02d07d112cbb6372c29017e5a40",
+      "sha256": "955cebc67436ecba9b980c3052b7b96bd616e0945d739e9f2c9ca50df612a932"
+    },
+    "LlamaFactory/examples/train_lora/qwen35_0_8b_timelens_video_c2l.yaml": {
+      "commit": "e257adeb497dc02d07d112cbb6372c29017e5a40",
+      "sha256": "eeb02c488baa58bf4a013fc69cf8119072a83723ac17e9b8bf5ee235bf248431"
+    }
+  },
+  "recipes": {
+    "video-9b": "v1_5_1_event_order_r2_model_verified_cross_video_mc_2to1.sbatch",
+    "video-4b": "v1_5_1_event_order_r2_unverified_half_replacement_cross_video_mc_2to1_lr8e-5_qwen35_4b.sbatch",
+    "video-4b-last4s": "v1_5_1_event_order_r2_unverified_half_replacement_cross_video_mc_2to1_lr8e-5_qwen35_4b_base_last4s.sbatch",
+    "video-qwen3vl-4b-last8s": "v1_5_1_event_order_r2_model_verified_cross_video_mc_2to1_lr8e-5_qwen3vl_4b_last8s.sbatch",
+    "video-2b": "v1_5_1_event_order_r2_model_verified_cross_video_mc_2to1_lr8e-5_qwen35_2b.sbatch",
+    "video-0.8b": "v1_5_1_event_order_r2_model_verified_cross_video_mc_2to1_lr8e-5_qwen35_0_8b.sbatch"
+  },
+  "intentional_changes": {
+    "video-9b.save_steps": {
+      "source": 1400,
+      "release": 2800,
+      "reason": "User requested a 2800-step save interval for all six presets."
+    }
+  }
+}

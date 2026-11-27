@@ -25,3 +25,4 @@ testpaths = ["tests"]
 
 [tool.setuptools.package-data]
 malow = ["release_models.json"]
+"malow.training" = ["*.json", "*.md", "_vendor/*.json", "_vendor/*.md", "_vendor/*.txt", "_vendor/LICENSES/*"]

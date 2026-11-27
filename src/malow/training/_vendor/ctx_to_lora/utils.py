@@ -1,0 +1,381 @@
+import ast
+import gc
+import hashlib
+import logging
+import os
+import random
+import string
+import time
+from collections.abc import Iterable
+from contextlib import contextmanager
+from enum import Enum
+
+import torch
+import yaml
+from peft import PeftConfig, PeftModel
+from peft.tuners.tuners_utils import BaseTunerLayer, check_target_module_exists
+from peft.utils import get_peft_model_state_dict
+
+TRAINING_TASK = Enum("TRAINING_TASK", ["CAUSAL_LM", "COMPLETION"])
+
+
+logger = logging.getLogger()
+
+
+# taken from https://discuss.pytorch.org/t/opinion-eval-should-be-a-context-manager/18998/3
+@contextmanager
+def evaluating(*models):
+    """Temporarily switch to evaluation mode."""
+    is_training = [model.training if model is not None else False for model in models]
+    try:
+        for model in models:
+            if model is not None:
+                model.eval()
+        yield models
+    finally:
+        for model, training in zip(models, is_training):
+            if model is not None:
+                model.train(training)
+
+
+def get_layers(model):
+    if hasattr(model, "layers"):
+        return model.layers
+    if hasattr(model, "language_model"):
+        return get_layers(model.language_model)
+    if hasattr(model, "base_model"):
+        return get_layers(model.base_model)
+    if hasattr(model, "model"):
+        return get_layers(model.model)
+    raise AttributeError(f"Cannot find decoder layers on {model.__class__.__name__}.")
+
+
+def get_num_layers(model):
+    return len(get_layers(model))
+
+
+def get_base_model(model):
+    if hasattr(model, "language_model"):
+        return get_base_model(model.language_model)
+    if hasattr(model, "base_model"):
+        return get_base_model(model.base_model)
+    if hasattr(model, "model"):
+        return get_base_model(model.model)
+    return model
+
+
+def get_num_params(model):
+    total_params = 0
+    trainable_params = 0
+    for p in model.parameters():
+        total_params += p.numel()
+        if p.requires_grad:
+            trainable_params += p.numel()
+
+    return total_params, trainable_params
+
+
+def log_num_train_params(model):
+    logger.debug("Trainable model parameters:")
+    for name, p in model.named_parameters():
+        if p.requires_grad:
+            logger.debug(f"{name}, dtype:{p.dtype}")
+
+    num_total_params, num_trainable_params = get_num_params(model)
+    logger.info(
+        f"trainable params: {num_trainable_params:,d} "
+        f"|| all params: {num_total_params:,d} "
+        f"|| trainable%: {100 * num_trainable_params / num_total_params:.4f}"
+    )
+
+
+def get_run_name(seed_str: str | None = None):
+    if not seed_str:
+        uuid = "".join(
+            [random.choice(string.ascii_letters + string.digits) for _ in range(8)]
+        )
+        run_name = time.strftime("%Y%m%d-%H%M%S") + f"_{uuid}"
+    else:
+        # Generate a UUID from the seed string
+        hash_object = hashlib.sha256(seed_str.encode())
+        uuid = hash_object.hexdigest()[:8]  # Take the first 8 characters of the hash
+        run_name = seed_str + f"_{uuid}"
+    return run_name
+
+
+def try_convert(s):
+    try:
+        return ast.literal_eval(s)
+    except:
+        return s
+
+
+def extract_cli_args(argv: list[str]):
+    out = dict()
+    for elem in argv:
+        if elem.endswith(".yaml"):
+            out["config"] = elem
+
+        elif elem.startswith("--"):
+            k, v = elem.split("=")
+            k = k.split("--")[1]
+            v = try_convert(v)
+            # if k.startswith('env_'):
+            #     k = k.split('_')[1]
+            out[k] = v
+    return out
+
+
+def setup_logging(output_dir, debug=False):
+    global logger
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    log_formatter = logging.Formatter(
+        fmt="%(asctime)s %(levelname)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+    )
+    stream_level = logging.DEBUG if debug else logging.INFO
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(log_formatter)
+    stream_handler.setLevel(stream_level)
+    logger.addHandler(stream_handler)
+
+    log_path = f"{output_dir}/debug.log"
+    debug_handler = logging.FileHandler(log_path, delay=True)
+    debug_handler.setLevel(logging.DEBUG)
+    debug_handler.setFormatter(log_formatter)
+    logger.addHandler(debug_handler)
+    logger.setLevel(logging.DEBUG)
+    logger.info(f"Logging to: {log_path}")
+
+
+def validate_args(args_list):
+    # there shouldn't be overlap between args
+    keys = set()
+    for args in args_list:
+        logger.debug(args)
+        args_keys = set(vars(args).keys())
+        assert len(keys & args_keys) == 0, "Overlap between args"
+        keys |= args_keys
+
+
+def save_yaml(data, path):
+    # Filter out non-primitive fields
+    data = {
+        k: v
+        for k, v in data.items()
+        if isinstance(v, (int, float, str, bool, list, dict, type(None)))
+    }
+
+    with open(path, "w") as file:
+        yaml.dump(data, file)
+
+
+def get_peft_modules(model: PeftModel, peft_config: PeftConfig) -> list[dict[str, str]]:
+    return [
+        {"name": name, "module": module}
+        for name, module in model.named_modules()
+        if name.split(".")[-1] in peft_config.target_modules
+        and isinstance(module, BaseTunerLayer)
+        and check_target_module_exists(peft_config, name)
+    ]
+
+
+def _iter_lora_target_modules(peft_config: PeftConfig) -> list[str]:
+    target_modules = peft_config.target_modules
+    if target_modules is None:
+        return []
+    if isinstance(target_modules, str):
+        return [target_modules]
+    return list(target_modules)
+
+
+def get_lora_target_key(module_name: str, peft_config: PeftConfig) -> str | None:
+    if not check_target_module_exists(peft_config, module_name):
+        return None
+
+    leaf_name = module_name.split(".")[-1]
+    for target_key in sorted(_iter_lora_target_modules(peft_config), key=len, reverse=True):
+        if (
+            module_name == target_key
+            or module_name.endswith(f".{target_key}")
+            or leaf_name == target_key
+        ):
+            return target_key
+    return leaf_name
+
+
+def safe_lora_target_key(target_key: str) -> str:
+    return "".join(ch if ch.isalnum() else "_" for ch in target_key)
+
+
+def get_lora_target_modules(model: torch.nn.Module, peft_config: PeftConfig) -> list[dict[str, str]]:
+    return [
+        {"name": name, "module": module, "target_key": target_key}
+        for name, module in model.named_modules()
+        if (target_key := get_lora_target_key(name, peft_config)) is not None
+        and isinstance(module, (BaseTunerLayer, torch.nn.Linear))
+    ]
+
+
+def get_peft_in_out_features(
+    model: torch.nn.Module,
+    peft_config: PeftConfig | None = None,
+) -> tuple[dict[str, int], dict[str, int]]:
+    if peft_config is None:
+        return None, None
+    in_features = dict()
+    out_features = dict()
+    if isinstance(model, PeftModel):
+        modules = get_lora_target_modules(model, peft_config)
+    else:
+        modules = []
+        for layer in get_layers(model):
+            modules.extend(get_lora_target_modules(layer, peft_config))
+
+    for module_info in modules:
+        module_name = module_info["name"]
+        module = module_info["module"]
+        # support just Linear layer for now
+        # all modules should be a leave module that is Linear layer
+        if isinstance(module, BaseTunerLayer):
+            assert isinstance(module.base_layer, torch.nn.Linear), (
+                "all modules should be a leave module that is Linear layer"
+            )
+            in_features_value = module.in_features
+            out_features_value = module.out_features
+        else:
+            assert isinstance(module, torch.nn.Linear), "all modules should be Linear layers"
+            in_features_value = module.in_features
+            out_features_value = module.out_features
+
+        name = module_info.get("target_key") or module_name.split(".")[-1]
+
+        if name not in in_features:
+            in_features[name] = in_features_value
+            out_features[name] = out_features_value
+        else:
+            # assumes each module has the same input and output features
+            assert in_features[name] == in_features_value
+            assert out_features[name] == out_features_value
+
+    return in_features, out_features
+
+
+def get_lora_target_slots(
+    model: torch.nn.Module,
+    peft_config: PeftConfig,
+    layer_indices: Iterable[int] | None = None,
+) -> list[dict[str, int | str]]:
+    if layer_indices is None:
+        layer_indices = range(len(get_layers(model)))
+
+    slots = []
+    seen = set()
+    layers = get_layers(model)
+    for layer_idx in layer_indices:
+        layer_idx = int(layer_idx)
+        layer = layers[layer_idx]
+        for module_info in get_lora_target_modules(layer, peft_config):
+            module_name = module_info["name"]
+            target_key = module_info["target_key"]
+            module = module_info["module"]
+            if isinstance(module, BaseTunerLayer):
+                assert isinstance(module.base_layer, torch.nn.Linear), (
+                    "all modules should be a leave module that is Linear layer"
+                )
+                in_features_value = module.in_features
+                out_features_value = module.out_features
+            else:
+                assert isinstance(module, torch.nn.Linear), "all modules should be Linear layers"
+                in_features_value = module.in_features
+                out_features_value = module.out_features
+
+            slot_key = f"layer_{layer_idx}__{safe_lora_target_key(target_key)}"
+            if slot_key in seen:
+                continue
+            seen.add(slot_key)
+            slots.append(
+                {
+                    "slot_key": slot_key,
+                    "layer_idx": layer_idx,
+                    "module_path": module_name,
+                    "target_key": target_key,
+                    "d_in": int(in_features_value),
+                    "d_out": int(out_features_value),
+                }
+            )
+
+    return slots
+
+
+def generated_lora_to_state_dict(
+    lora_dict: dict,
+    module_names: dict,
+    target_modules: list[str],
+    layer_indices: Iterable[int],
+) -> dict:
+    lora_state_dict = dict()
+    for target_module in target_modules:
+        for layer_idx in layer_indices:
+            for module_name in module_names[target_module][layer_idx]:
+                if "lora_A" in module_name:
+                    lora_state_dict[module_name] = (
+                        lora_dict[target_module]["A"][layer_idx].cpu().contiguous()
+                    )
+                elif "lora_B" in module_name:
+                    lora_state_dict[module_name] = (
+                        lora_dict[target_module]["B"][layer_idx].cpu().contiguous()
+                    )
+                else:
+                    raise ValueError(f"Unexpected module name: {module_name}")
+    return lora_state_dict
+
+
+def get_lora_module_names(
+    model: PeftModel,
+    target_modules: list[str],
+    layer_indices: Iterable[int],
+) -> dict[str, list[str]]:
+    module_names = {
+        target_module: [[] for _ in range(len(layer_indices))]
+        for target_module in target_modules
+    }
+    for k in get_peft_model_state_dict(model):
+        if "lora" not in k:
+            continue
+        layer_idx = int(k.split("layers.")[-1].split(".")[0])
+        if layer_idx in layer_indices:
+            for target_module in target_modules:
+                if target_module in k:
+                    module_names[target_module][layer_idx].append(k)
+                    break
+    return module_names
+
+
+def compile_linear(model):
+    for name, module in model.named_modules():
+        if isinstance(module, torch.nn.Linear):
+            module.compile()
+
+
+def clear_gpu():
+    gc.collect()
+    torch.cuda.empty_cache()
+    torch.cuda.reset_max_memory_allocated()
+    torch.cuda.reset_max_memory_cached()
+
+
+def concat_list(l):
+    out = []
+    for x in l:
+        out += x
+    return out
+
+
+def check_is_iterable(x):
+    try:
+        iter(x)
+    except TypeError:
+        return False
+    return True

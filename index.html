@@ -31,7 +31,6 @@
       <li><a href="#inference-overhead">Inference Overhead</a></li>
       <li><a href="#qualitative">Qualitative Results</a></li>
       <li><a href="#resources">Resources</a></li>
-      <li><a href="#next">What To Add Next</a></li>
       <li><a href="#citation">Citation</a></li>
     </ol>
   </nav>
@@ -282,16 +281,20 @@ model to leverage historical context through MaLoW.</p>
   <h2>Resources</h2>
   <div class="resource-grid">
     <div class="resource-card"><h3><i class="fa-regular fa-file-pdf" aria-hidden="true"></i> Paper</h3><p>Memory as Weights: Internalizing Long-Term History for Streaming Videos.</p><p><a href="https://arxiv.org/abs/2610.22070">Read the paper on arXiv</a></p></div>
-    <div class="resource-card"><h3><i class="fa-solid fa-code" aria-hidden="true"></i> Code &amp; Evaluation</h3><p><a href="https://github.com/dragonlzm/MaLoW">Code on GitHub</a></p><ul><li><a href="https://github.com/dragonlzm/MaLoW/blob/main/docs/video_evaluation.md">Video evaluation guide</a></li></ul></div>
-    <div class="resource-card"><h3><i class="fa-regular fa-face-smile" aria-hidden="true"></i> Hugging Face</h3><p><a href="https://huggingface.co/collections/zhuomingliu/malow-6abf1cddce6196fc0bf08a8c">Browse all six checkpoints here</a>.</p><p class="resource-status">The corresponding Qwen3.5 or Qwen3-VL base model is also required.</p></div>
-  </div>
-</div>
-<div class="container blog main" id="next">
-  <h2>What To Add Next</h2>
-  <p class="text">Evaluation code and model checkpoints are available now. The following releases are planned.</p>
-  <div class="timeline">
-    <div class="timeline-item"><h3>Training Code</h3><p>Code for training MaLoW memory modules will be released in the project repository.</p></div>
-    <div class="timeline-item"><h3>Training Data</h3><p>MaLoW-Instruct streaming video training data will be released.</p></div>
+    <div class="resource-card">
+      <h3><i class="fa-solid fa-code" aria-hidden="true"></i> Code &amp; Evaluation</h3>
+      <p><a href="https://github.com/dragonlzm/MaLoW">Code on GitHub</a></p>
+      <ul>
+        <li><a href="https://github.com/dragonlzm/MaLoW/blob/main/docs/video_training.md">Video training guide</a></li>
+        <li><a href="https://github.com/dragonlzm/MaLoW/blob/main/docs/video_evaluation.md">Video evaluation guide</a></li>
+      </ul>
+    </div>
+    <div class="resource-card">
+      <h3><i class="fa-regular fa-face-smile" aria-hidden="true"></i> Hugging Face</h3>
+      <p><a href="https://huggingface.co/datasets/zhuomingliu/MaLoW-Instruct">MaLoW-Instruct training dataset</a></p>
+      <p><a href="https://huggingface.co/collections/zhuomingliu/malow-6abf1cddce6196fc0bf08a8c">Browse all six checkpoints here</a>.</p>
+      <p class="resource-status">The corresponding Qwen3.5 or Qwen3-VL base model is also required.</p>
+    </div>
   </div>
 </div>
 <div class="container blog main" id="citation">

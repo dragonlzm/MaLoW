@@ -1,0 +1,9 @@
+# Install the CUDA-matched torch/torchvision/torchaudio wheels first (see docs).
+-r requirements-video.txt
+torchaudio==2.6.0
+trl==0.24.0
+# Additional versions import-tested in hippo_train_q35; not historical run pins.
+jaxtyping==0.3.11
+omegaconf==2.3.1
+matplotlib==3.11.1
+typing_extensions>=4.12,<5

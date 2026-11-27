@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "annotation_repo": "zhuomingliu/MaLoW-Instruct",
+  "video_repo": "zhuomingliu/MaLoW-Instruct",
+  "annotation_revision": "e2d02b0503a8b5c47c74d2e0f413c4a679e9d165",
+  "video_revision": "e2d02b0503a8b5c47c74d2e0f413c4a679e9d165",
+  "streams": [
+    {
+      "id": "timelens_streaming",
+      "profile_dir": "Timelens-100K/TimeLens-100K/c2l_video_profile/timelens_streaming_qwen35_9b_1fps_cap512_multiturn",
+      "video_source": "timelens",
+      "rows": 94725,
+      "shards": 8
+    },
+    {
+      "id": "llava",
+      "profile_dir": "LLaVA-Video-178K/c2l_video_profile/llava_video_178k_qwen35_9b_1fps_cap180_multiturn",
+      "video_source": "llava",
+      "rows": 28295,
+      "shards": 8
+    },
+    {
+      "id": "event_order_prefix",
+      "profile_dir": "Timelens-100K/TimeLens-100K/c2l_video_profile/timelens_event_order_qwen35_9b_1fps_cap512_skip_balance_fixed_prefix_multiturn",
+      "video_source": "timelens",
+      "rows": 8745,
+      "shards": 8
+    },
+    {
+      "id": "event_order_r2",
+      "profile_dir": "event_order_r2_model_verified_profile_shards/profiles",
+      "video_source": "r2",
+      "rows": 23034,
+      "shards": 8
+    },
+    {
+      "id": "event_order_full",
+      "profile_dir": "Timelens-100K/TimeLens-100K/c2l_video_profile/timelens_event_order_qwen35_9b_1fps_cap512_skip_balance_full_video_multiturn",
+      "video_source": "timelens",
+      "rows": 5165,
+      "shards": 8
+    },
+    {
+      "id": "readiness_negative",
+      "profile_dir": "Timelens-100K/TimeLens-100K/proactive_gt_sft_profiles_1fps_cap512/streaming_readiness_negative/c2l_video_profile/multiturn",
+      "video_source": "timelens",
+      "rows": 9981,
+      "shards": 8
+    },
+    {
+      "id": "readiness_positive",
+      "profile_dir": "Timelens-100K/TimeLens-100K/proactive_gt_sft_profiles_1fps_cap512/streaming_readiness_positive/c2l_video_profile/multiturn",
+      "video_source": "timelens",
+      "rows": 9985,
+      "shards": 8
+    },
+    {
+      "id": "readiness_delayed",
+      "profile_dir": "Timelens-100K/TimeLens-100K/proactive_delayed_gt_sft_profiles_1fps_cap512/streaming_readiness_delayed_positive/c2l_video_profile/multiturn",
+      "video_source": "timelens",
+      "rows": 9399,
+      "shards": 8
+    },
+    {
+      "id": "ovo_negative",
+      "profile_dir": "Timelens-100K/TimeLens-100K/proactive_gt_sft_profiles_1fps_cap512/ovo_negative/c2l_video_profile/multiturn",
+      "video_source": "timelens",
+      "rows": 9986,
+      "shards": 8
+    },
+    {
+      "id": "cross_video_positive",
+      "profile_dir": "Timelens-100K/TimeLens-100K/cross_video_mc_hallucination_suppression_gt_sft_profiles_1fps_cap512/positive/c2l_video_profile/multiturn",
+      "video_source": "timelens",
+      "rows": 1000,
+      "shards": 8
+    },
+    {
+      "id": "cross_video_negative",
+      "profile_dir": "Timelens-100K/TimeLens-100K/cross_video_mc_hallucination_suppression_gt_sft_profiles_1fps_cap512/negative/c2l_video_profile/multiturn",
+      "video_source": "timelens",
+      "rows": 1000,
+      "shards": 8
+    },
+    {
+      "id": "ovo_positive",
+      "profile_dir": "Timelens-100K/TimeLens-100K/proactive_gt_sft_profiles_1fps_cap512/ovo_positive/c2l_video_profile/multiturn",
+      "video_source": "timelens",
+      "rows": 9986,
+      "shards": 8
+    },
+    {
+      "id": "ovo_delayed",
+      "profile_dir": "Timelens-100K/TimeLens-100K/proactive_delayed_gt_sft_profiles_1fps_cap512/ovo_delayed_positive/c2l_video_profile/multiturn",
+      "video_source": "timelens",
+      "rows": 9411,
+      "shards": 8
+    },
+    {
+      "id": "thumos_validation",
+      "profile_dir": "thumos14/thumos14_validation_rec_gt_sft_profiles_count_cap10_videos-4ps-min128_cap512/c2l_video_profile/multiturn",
+      "video_source": "thumos",
+      "rows": 2129,
+      "shards": 8
+    },
+    {
+      "id": "thumos_test",
+      "profile_dir": "thumos14/thumos14_test_rec_gt_sft_profiles_count_cap10_exclude_ovobench_videos-4ps-min128_cap512/c2l_video_profile/multiturn",
+      "video_source": "thumos",
+      "rows": 2299,
+      "shards": 8
+    }
+  ],
+  "video_roots": {
+    "llava": "LLaVA-Video-178K-4fps-min128",
+    "timelens": "TimeLens-100K-4fps-min128/video_shards",
+    "thumos": "thumos14/videos-4ps-min128",
+    "r2": "event_order_r2_model_verified"
+  },
+  "source_archives": [
+    {
+      "id": "llava",
+      "filename": "LLaVA-Video-178K-4fps-min128.tar",
+      "size_bytes": 51547699200,
+      "sha256": "55e556641c24b5866f7ebe11b89601670314f024c3aacb0ae2cb82d042271a7c",
+      "member_anchor": "LLaVA-Video-178K-4fps-min128",
+      "destination": "LLaVA-Video-178K-4fps-min128"
+    },
+    {
+      "id": "timelens",
+      "filename": "TimeLens-100K-4fps-min128.tar",
+      "size_bytes": 83445596160,
+      "sha256": "ac97beed6f4fe49f1316f7dcc953f5ff3b9d99b971014e23d36e973014c7a9cc",
+      "member_anchor": "TimeLens-100K-4fps-min128",
+      "destination": "TimeLens-100K-4fps-min128"
+    },
+    {
+      "id": "thumos",
+      "filename": "thumos14/videos-4ps-min128.zip",
+      "size_bytes": 2286230910,
+      "sha256": "7cb2bad1f2177102135740a9678394c68e0d9a2e2c5f9566c70a080ee011ce25",
+      "member_anchor": "videos-4ps-min128",
+      "destination": "thumos14/videos-4ps-min128"
+    }
+  ],
+  "r2": {
+    "videos": 7807,
+    "size_bytes": 48863430460,
+    "rows": 23034,
+    "source_profile_sha256": "a7fc11f38da0f8d1c5182c2b757c1ed300b2975ee7a8c70e244126d182063e55"
+  }
+}
